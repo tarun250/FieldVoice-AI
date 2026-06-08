@@ -1,0 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Soft light slate design variables */
+    --background: 210 40% 98%; /* #F8FAFC (Slate-50 area) */
+    --foreground: 222 47% 11%; /* #0F172A (Deep Slate-900) */
+
+    --card: 0 0% 100%; /* #FFFFFF (White) */
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Standard information blue action */
+    --primary: 221.2 83.2% 53.3%; /* #2563EB */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 98%; /* #F8FAFC */
+    --secondary-foreground: 215 25% 35%; /* #475569 */
+
+    --muted: 210 40% 96.1%; /* slate-100 */
+    --muted-foreground: 215 16% 47%; /* #64748B */
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11%;
+
+    /* Status colors */
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 162 94% 30%; /* #059669 */
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 33 92% 43%; /* #D97706 */
+    --warning-foreground: 0 0% 100%;
+
+    /* Borders and Dividers */
+    --border: 220 13% 91%; /* #E5E7EB */
+    --input: 214 32% 91%; /* #E2E8F0 */
+    --ring: 221.2 83.2% 53.3%;
+
+    --radius: 4px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.16);
+}

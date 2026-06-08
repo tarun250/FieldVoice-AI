@@ -1,0 +1,50 @@
+[
+  {
+    "equipment_id": "T-402",
+    "title": "Turbine Generator T-402 Operating Specifications",
+    "content": "Turbine Generator T-402 has a maximum operating pressure limit of 150 PSI. The maximum allowable oil temperature is 95 degrees Celsius. If casing vibration exceeds a threshold of 0.15 inches per second (ips), shut down the unit immediately.",
+    "keywords": ["pressure", "limit", "temperature", "specifications", "vibration", "threshold", "operating"]
+  },
+  {
+    "equipment_id": "T-402",
+    "title": "Turbine Generator T-402 Emergency Isolation Procedure",
+    "content": "To isolate Turbine Generator T-402: First, shut off the main fuel line valve. Second, close isolation valve B on the lube-oil header. Finally, engage the manual mechanical lock on the drive shaft before starting any casing inspections.",
+    "keywords": ["isolate", "isolation", "procedure", "shutdown", "emergency", "lock", "valve"]
+  },
+  {
+    "equipment_id": "P-101",
+    "title": "Water Pump P-101 Casing & Flow Specifications",
+    "content": "Water Pump P-101 is rated for a maximum flow rate of 500 GPM (Gallons Per Minute) at a maximum speed of 1800 RPM. The maximum casing pressure rating is 250 PSI. Do not operate below 50 GPM to prevent pump cavitation.",
+    "keywords": ["flow", "pressure", "casing", "cavitation", "specs", "rpm", "gpm"]
+  },
+  {
+    "equipment_id": "P-101",
+    "title": "Water Pump P-101 Shutdown & Isolation steps",
+    "content": "Water Pump P-101 isolation procedure: 1. Turn off the main electrical breaker located in Substation 3. 2. Close the suction gate valve completely. 3. Close the discharge check valve to prevent backward water flow.",
+    "keywords": ["isolate", "shutdown", "breaker", "substation", "valve", "suction"]
+  },
+  {
+    "equipment_id": "V-99",
+    "title": "Main Isolation Valve V-99 Maintenance Standards",
+    "content": "Main Isolation Valve V-99 is a full-bore gate valve with Class 300 body rating and a Viton O-ring seal. During quarterly maintenance, inspect the valve packing for leaks, torque actuator bolts to 45 ft-lbs, and lubricate the stem threads.",
+    "keywords": ["maintenance", "valve", "packing", "seal", "torque", "lubricate", "bolts"]
+  },
+  {
+    "equipment_id": "GEN-501",
+    "title": "Emergency Generator GEN-501 General Specifications",
+    "content": "Emergency Generator GEN-501 provides 500kW of backup power. It operates on low-sulfur diesel fuel, has a coolant capacity of 25 gallons, and utilizes a 24V DC battery starter system. Normal oil pressure range is 40 to 60 PSI.",
+    "keywords": ["generator", "specs", "diesel", "battery", "starter", "oil", "pressure"]
+  },
+  {
+    "equipment_id": "GEN-501",
+    "title": "Emergency Generator GEN-501 Maintenance checklist",
+    "content": "Emergency Generator GEN-501 weekly checklist: Verify fuel level in auxiliary tank is above 50%. Test battery starter voltage (must exceed 24V DC). Check for oil leaks on housing and clean the air filter.",
+    "keywords": ["maintenance", "checklist", "weekly", "leak", "battery", "voltage", "filter"]
+  },
+  {
+    "equipment_id": "BOILER-3",
+    "title": "Steam Boiler BOILER-3 Operating Specifications",
+    "content": "Steam Boiler BOILER-3 operates at a normal steam pressure of 15 PSI with a capacity of 1000 lbs/hr. The normal water level setpoint is 50% on the sight glass. High-pressure steam limit is set at 25 PSI.",
+    "keywords": ["boiler", "steam", "pressure", "water", "level", "limit", "capacity"]
+  }
+]

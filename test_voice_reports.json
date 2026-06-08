@@ -1,0 +1,1374 @@
+[
+  {
+    "id": 1,
+    "raw_transcript": "P-101 in Turbine Room B is acting up. [clanking]... a lot of valve packing leak. looks like Loss of system pressure. fault code F-HYD-PRESS. [clanking] severity Medium. I just Re-calibrated RTD temperature sensor. need ah some... [background chatter] nothing for it. [static]",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Turbine Room B",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 2,
+    "raw_transcript": "um V-312 like at Hydraulics Bay has Loss of system pressure. severe armature winding. code is f hyd press. severity level medium. did a quick fix: Isolated and shut down unit manually. [clanking]... need no parts to finish it. uh",
+    "ground_truth": {
+      "equipment_id": "V-312",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 3,
+    "raw_transcript": "hey, um... this is report 3. we are at Basement Sump. inspecting Hydraulic Power Pack HYD-88 which like is HYD-88. there is a Extreme gear backlash/wear. code is F-MECH-WEAR. severity is Medium. what I did: Replaced flange gasket and tightened um bolts. we will need Drive Belt, Hydraulic Fluid.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Basement Sump",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": [
+        "Drive Belt",
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "raw_transcript": "P-204 in Boiler Room Hallway is acting up. [hissing]... a lot of valve packing [static] leak. looks like Structural housing ah crack. [static] fault code F-STRUCT-CRACK. [background chatter] severity High. I just Re-calibrated RTD temperature sensor. need some... Drive Belt, Casing Plate for it.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": [
+        "Drive Belt",
+        "Casing Plate"
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "raw_transcript": "ok so, checking in from Basement Sump. the generator... that's GEN 501... has a [hissing] major issue. it's got Bearing temperature overload. code F-THERM-HOT. severity is um definitely Critical. uh... I had like to Patched outer housing with temporary casing plate. make sure to order no extra parts.",
+    "ground_truth": {
+      "equipment_id": "GEN-501",
+      "location": "Basement Sump",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Patched outer housing with temporary casing plate",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 6,
+    "raw_transcript": "hey, ah... this is report 6. we uh are at Turbine Room B. inspecting pump which is P-101. there is a Excessive shaft vibration. code is F-MECH-VIB. severity is High. what I did: Lubricated bearings uh and adjusted drive belt tension. we um will need Ball Bearing, Hydraulic Fluid.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Turbine Room B",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "Ball Bearing",
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 7,
+    "raw_transcript": "hey, [clanking] [hissing]... this is report 7. we are at North Yard. inspecting valve which is V-99. there is a RTD like sensor uh calibration drift. code is F-ELEC-CALIBR. severity is Low. what I did: Isolated and shut down unit manually. we will need Drive Belt, O-Ring.",
+    "ground_truth": {
+      "equipment_id": "V-99",
+      "location": "North Yard",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": [
+        "Drive Belt",
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 8,
+    "raw_transcript": "ok so, checking in from Turbine Room B. the v... valve... that's V 312... has a major issue. it's got Bearing temperature overload. code F-THERM-HOT. severity is definitely Critical. well... I had to Replaced [background chatter] flange gasket and tightened bolts. make sure to order no extra parts.",
+    "ground_truth": {
+      "equipment_id": "V-312",
+      "location": "Turbine Room B",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 9,
+    "raw_transcript": "hey, [background chatter]... this [static] is report 9. we are at Roof Deck Area 2. inspecting g-generator which is GEN-501. there is a Structural housing crack. code is F-STRUCT-CRACK. severity is High. what I did: Cleaned air filter and blew out lines. we will need O-Ring, Flange Gasket.",
+    "ground_truth": {
+      "equipment_id": "GEN-501",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "O-Ring",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 10,
+    "raw_transcript": "ah COMP-7A at [clanking] Basement Sump has Bearing temperature overload. severe impeller wear. code is f therm hot. severity level critical. did a quick fix: Closed bypass like valve and verified pressure drop. [clanking]... need O-Ring, Seal Kit to finish it.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Basement Sump",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": [
+        "O-Ring",
+        "Seal Kit"
+      ]
+    }
+  },
+  {
+    "id": 11,
+    "raw_transcript": "hey, [background chatter]... well this is report 11. we are at Roof Deck Area 2. inspecting t-turbine which is T-402. there is a Structural housing crack. code is F-STRUCT-CRACK. severity is High. what I did: Replaced [clanking] flange gasket and tightened bolts. we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 12,
+    "raw_transcript": "ah T-402 at Basement Sump has Bearing temperature overload. [background chatter] severe cavitation sound. code is f therm hot. severity level critical. did a quick fix: Lubricated bearings and adjusted drive belt tension. ah... need O-Ring to like finish it.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Basement Sump",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 13,
+    "raw_transcript": "hey, [static]... this is [background chatter] report 13. we are at Compressor Shed. inspecting generator which is GEN-501. there is a Lube oil leakage. code is [clanking] F-LEAK-OIL. severity is High. what I did: Isolated and shut [background chatter] down unit manually. we will need Casing Plate, Flange Gasket.",
+    "ground_truth": {
+      "equipment_id": "GEN-501",
+      "location": "Compressor Shed",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": [
+        "Casing Plate",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 14,
+    "raw_transcript": "ok so, checking in [static] from Auxiliary Pump Room. the Steam Boiler BOILER-3... that's BOILER 3... has a major issue. it's got Lube oil leakage. code F-LEAK-OIL. severity is [clanking] definitely High. uh... I had to Replaced flange gasket and tightened bolts. make sure to order Casing Plate.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Auxiliary Pump Room",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": [
+        "Casing Plate"
+      ]
+    }
+  },
+  {
+    "id": 15,
+    "raw_transcript": "hey, um... this is report 15. we are uh at Valve Pit 4. inspecting p-pump which is P-101. there is a Bearing temperature overload. code is F-THERM-HOT. severity is Critical. what I did: Closed bypass valve uh and verified pressure drop. we will [clanking] need no parts.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Valve Pit 4",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 16,
+    "raw_transcript": "um uh P-101 at Basement Sump has Stator winding short circuit. severe cavitation sound. code is f elec short. severity level critical. did a quick fix: Closed bypass valve and verified pressure drop. [clanking]... need RTD Sensor to finish it.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Basement Sump",
+      "fault_code": "F-ELEC-SHORT",
+      "severity": "Critical",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": [
+        "RTD Sensor"
+      ]
+    }
+  },
+  {
+    "id": 17,
+    "raw_transcript": "P-204 in Substation 3 is acting up. [clanking]... a lot of backlash play. looks like Stator winding short circuit. um fault code F-ELEC-SHORT. well severity Critical. I just Cleaned air filter and blew out lines. need some... Hydraulic Fluid, Drive Belt for it.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Substation 3",
+      "fault_code": "F-ELEC-SHORT",
+      "severity": "Critical",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Hydraulic Fluid",
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 18,
+    "raw_transcript": "ok so, checking in from Boiler Room Hallway. the t-turbine... [clanking] that's T 402... has a uh major issue. it's got Bearing temperature overload. [static] code F-THERM-HOT. severity is definitely Critical. um... I had to Re-calibrated RTD temperature sensor. make sure to order Seal Kit, Ball Bearing.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": [
+        "Seal Kit",
+        "Ball Bearing"
+      ]
+    }
+  },
+  {
+    "id": 19,
+    "raw_transcript": "ah T-102 at Compressor Shed has Bearing temperature overload. severe insulation resistance. code is f therm hot. severity level critical. did a quick fix: Cleaned air filter and blew out lines. uh... ah need um Drive Belt to finish it.",
+    "ground_truth": {
+      "equipment_id": "T-102",
+      "location": "Compressor Shed",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 20,
+    "raw_transcript": "well T-402 in ah Basement Sump is acting up. ah... a lot of insulation resistance. looks like Loss of system pressure. fault code F-HYD-PRESS. um severity Medium. I just Lubricated bearings and adjusted drive belt tension. need some... Drive Belt, Flange Gasket for it.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Basement Sump",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "Drive Belt",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 21,
+    "raw_transcript": "ok so, checking in from Compressor Shed. the [background chatter] Hydraulic Power Pack HYD-88... that's HYD 88... has a major well issue. it's got Structural housing crack. ah code F-STRUCT-CRACK. severity is definitely High. um... I had to Refilled hydraulic fluid reservoir and checked seals. make sure to order no extra parts.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Compressor Shed",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 22,
+    "raw_transcript": "ok so, checking in from Auxiliary Pump Room. the pump... [clanking] that's P 204... has a major issue. well it's got Loss of system pressure. code F-HYD-PRESS. severity is definitely Medium. [background chatter]... I had to Refilled hydraulic fluid reservoir and checked um seals. make sure to order Flange Gasket, Ball Bearing.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Auxiliary Pump Room",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "Flange Gasket",
+        "Ball Bearing"
+      ]
+    }
+  },
+  {
+    "id": 23,
+    "raw_transcript": "ok so, checking in from Compressor Shed. the pump... [static] that's P 101... has a major issue. it's got Loss of system pressure. code F-HYD-PRESS. severity [background chatter] is definitely Medium. [background chatter]... I had to Re-calibrated RTD temperature sensor. make sure to order no extra parts.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Compressor Shed",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 24,
+    "raw_transcript": "ok so, checking in from Roof Deck Area 2. the pump... that's P 101... has a major issue. it's got Bearing temperature overload. code F-THERM-HOT. severity is well [hissing] definitely Critical. um... I had to Lubricated bearings and adjusted drive belt tension. make sure to order O-Ring, Flange well Gasket.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "O-Ring",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 25,
+    "raw_transcript": "like T-102 at Hydraulics Bay [hissing] has Loss of system pressure. severe armature winding. code is f hyd press. severity level well medium. did a quick fix: Re-calibrated RTD temperature sensor. uh... need Drive Belt, Hydraulic Fluid to finish it.",
+    "ground_truth": {
+      "equipment_id": "T-102",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": [
+        "Drive Belt",
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 26,
+    "raw_transcript": "um hey, ah... this is report 26. we are at Compressor Shed. inspecting p... pump which is P-204. there ah is a Extreme gear backlash/wear. code like is F-MECH-WEAR. severity is Medium. what I did: Lubricated bearings and adjusted drive belt tension. we will need RTD Sensor, Flange Gasket.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Compressor Shed",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "RTD Sensor",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 27,
+    "raw_transcript": "hey, uh... this is report ah 27. we are at Valve Pit 4. inspecting v... valve which is V-99. there is a Bearing temperature overload. code is F-THERM-HOT. severity is Critical. what I did: Cleaned air filter and [static] blew out lines. we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "V-99",
+      "location": "Valve Pit 4",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 28,
+    "raw_transcript": "ok so, checking in from Hydraulics Bay. the p... pump... that's P 204... has a major issue. it's got Stator winding short circuit. code F-ELEC-SHORT. severity is definitely Critical. [clanking]... I had to Isolated [static] and shut down unit manually. make sure to order Hydraulic Fluid.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-ELEC-SHORT",
+      "severity": "Critical",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": [
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 29,
+    "raw_transcript": "COMP-7A in Compressor Shed is acting up. [static]... a lot [clanking] of stator core. looks like Excessive um shaft vibration. fault code F-MECH-VIB. [hissing] severity High. I just Isolated and shut down unit manually. need some... nothing for it.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Compressor Shed",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 30,
+    "raw_transcript": "[clanking] P-204 at Substation well 3 has Excessive shaft vibration. severe differential pressure drop. code is f mech vib. severity level [static] high. did a quick fix: Isolated and um shut down unit manually. [clanking]... need Hydraulic Fluid to finish it.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Substation 3",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": [
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 31,
+    "raw_transcript": "well V-99 at Hydraulics Bay uh has Excessive shaft vibration. severe fluid degradation. code is f mech vib. severity level high. did a quick fix: Refilled hydraulic fluid reservoir and checked seals. like... need O-Ring to finish it.",
+    "ground_truth": {
+      "equipment_id": "V-99",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 32,
+    "raw_transcript": "well [background chatter] T-102 at Compressor Shed has RTD sensor calibration drift. [clanking] severe insulation resistance. code is f well elec calibr. severity level low. did a quick fix: Refilled hydraulic fluid reservoir and checked seals. uh... need Flange Gasket to finish it.",
+    "ground_truth": {
+      "equipment_id": "T-102",
+      "location": "Compressor Shed",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 33,
+    "raw_transcript": "ok so, checking in from Roof Deck Area 2. the v... valve... that's V 312... has a major issue. it's got um RTD sensor calibration drift. code F-ELEC-CALIBR. well severity is definitely Low. um... I um had to Re-calibrated RTD temperature sensor. make sure to order O-Ring, Casing Plate.",
+    "ground_truth": {
+      "equipment_id": "V-312",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": [
+        "O-Ring",
+        "Casing Plate"
+      ]
+    }
+  },
+  {
+    "id": 34,
+    "raw_transcript": "ok so, checking in from Substation 3. the Cooling Tower Fan T-102... that's T 102... has a major issue. it's got Loss of system pressure. code F-HYD-PRESS. severity is definitely Medium. [background chatter]... I had to Closed bypass uh valve and verified pressure drop. make sure to well order no extra parts.",
+    "ground_truth": {
+      "equipment_id": "T-102",
+      "location": "Substation 3",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 35,
+    "raw_transcript": "uh ok so, checking in from Compressor Shed. the p... pump... that's P 101... has a major issue. it's got Loss of system pressure. code F-HYD-PRESS. severity is definitely Medium. [hissing]... I had to Re-calibrated RTD temperature sensor. make sure to order Ball Bearing.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Compressor Shed",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": [
+        "Ball Bearing"
+      ]
+    }
+  },
+  {
+    "id": 36,
+    "raw_transcript": "hey, [static]... this is report 36. we are at uh Hydraulics Bay. inspecting Cooling Tower Fan T-102 which is T-102. there is a RTD sensor calibration drift. code is F-ELEC-CALIBR. severity is Low. what I did: Patched outer housing with temporary casing plate. we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "T-102",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Patched outer housing with temporary casing plate",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 37,
+    "raw_transcript": "P-101 in Compressor Shed is acting up. like... a lot [background chatter] of fluid degradation. uh looks like Excessive shaft vibration. fault code F-MECH-VIB. uh severity High. I just Refilled hydraulic fluid reservoir and checked seals. need some... RTD Sensor, Hydraulic Fluid for it. [clanking]",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Compressor Shed",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "RTD Sensor",
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 38,
+    "raw_transcript": "hey, ah... this is report 38. we are at Valve Pit 4. inspecting p... uh pump which is P-204. there is a Excessive shaft vibration. code is [clanking] F-MECH-VIB. severity is High. what I did: Lubricated bearings and adjusted drive belt [background chatter] tension. we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Valve Pit 4",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 39,
+    "raw_transcript": "uh HYD-88 at Compressor Shed has Stator winding short circuit. severe fluid degradation. code is f elec short. severity level critical. did a quick fix: uh Closed bypass valve and verified like pressure well drop. [clanking]... need no parts to finish it.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Compressor Shed",
+      "fault_code": "F-ELEC-SHORT",
+      "severity": "Critical",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 40,
+    "raw_transcript": "ok so, checking in from Auxiliary Pump Room. the p-pump... that's ah P 101... has a major issue. it's got Lube oil leakage. code F-LEAK-OIL. severity is definitely High. like... I had to Refilled hydraulic fluid reservoir and checked seals. like make sure to order Casing Plate, Drive Belt.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Auxiliary Pump Room",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "Casing Plate",
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 41,
+    "raw_transcript": "hey, [clanking]... this is report 41. we ah are at Hydraulics Bay. inspecting p-pump which is P-101. um there is a Structural housing crack. code is F-STRUCT-CRACK. severity is High. what I did: Refilled hydraulic fluid reservoir and checked seals. we will need Casing Plate.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "Casing Plate"
+      ]
+    }
+  },
+  {
+    "id": 42,
+    "raw_transcript": "HYD-88 in Turbine Room B is acting [static] up. well... a lot of insulation resistance. looks like RTD sensor calibration drift. fault code F-ELEC-CALIBR. like severity Low. I just like Refilled hydraulic fluid reservoir and checked seals. need some... nothing for it.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Turbine Room B",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 43,
+    "raw_transcript": "like BOILER-3 at Compressor Shed has Stator winding short circuit. severe armature winding. code is like f elec ah short. severity level critical. did a quick fix: Closed bypass valve and like verified pressure drop. [hissing]... need Flange Gasket, Drive Belt to finish it.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Compressor Shed",
+      "fault_code": "F-ELEC-SHORT",
+      "severity": "Critical",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": [
+        "Flange Gasket",
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 44,
+    "raw_transcript": "well HYD-88 at North Yard has Extreme gear backlash/wear. like severe differential pressure drop. code is f mech wear. severity level medium. did a quick fix: Re-calibrated RTD temperature sensor. [static]... need Ball Bearing, like Hydraulic Fluid to finish like it.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "North Yard",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": [
+        "Ball Bearing",
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 45,
+    "raw_transcript": "ok so, checking in from Boiler Room Hallway. well the compressor... that's COMP 7A... has a major issue. it's got Extreme gear backlash/wear. code F-MECH-WEAR. severity is definitely Medium. ah... I had [static] to Cleaned air filter and blew out lines. make sure [hissing] to order RTD Sensor.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "RTD Sensor"
+      ]
+    }
+  },
+  {
+    "id": 46,
+    "raw_transcript": "ah BOILER-3 at Boiler Room um Hallway has Excessive shaft vibration. severe backlash play. code is f mech vib. severity level high. did a quick fix: Cleaned air filter and blew out lines. [clanking]... need no parts to finish it. ah",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 47,
+    "raw_transcript": "ok so, checking in from Roof Deck Area 2. the Hydraulic Power Pack HYD-88... that's HYD 88... has a major issue. it's got Structural housing crack. code F-STRUCT-CRACK. severity is definitely High. [clanking]... I had to Cleaned air filter and blew out lines. make uh sure to order Flange Gasket, Drive Belt.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Flange Gasket",
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 48,
+    "raw_transcript": "hey, um... this is report 48. we are at Turbine Room B. inspecting t... like turbine which is T-402. there is a Structural housing crack. [background chatter] code is F-STRUCT-CRACK. severity is High. [hissing] what I did: Isolated and shut down unit manually. we will need Casing Plate.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Turbine Room B",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": [
+        "Casing Plate"
+      ]
+    }
+  },
+  {
+    "id": 49,
+    "raw_transcript": "GEN-501 in Hydraulics Bay is acting up. [clanking]... a lot of fluid degradation. looks like ah Loss of system pressure. fault code F-HYD-PRESS. um severity Medium. I just Isolated and shut [clanking] down unit manually. need some... Drive Belt for it.",
+    "ground_truth": {
+      "equipment_id": "GEN-501",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": [
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 50,
+    "raw_transcript": "BOILER-3 in Boiler Room Hallway is acting up. [clanking] uh... a lot of uh cavitation sound. looks like Loss of system pressure. fault code F-HYD-PRESS. [static] severity Medium. I just Closed bypass valve and verified pressure drop. need some... nothing [static] for it.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 51,
+    "raw_transcript": "[hissing] GEN-501 at Hydraulics Bay has Lube oil leakage. severe valve packing leak. code is f like leak oil. severity level high. did a quick fix: Patched outer housing with temporary casing plate. um... need Ball Bearing, Flange Gasket to finish it.",
+    "ground_truth": {
+      "equipment_id": "GEN-501",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Patched outer housing with temporary casing plate",
+      "parts_required": [
+        "Ball Bearing",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 52,
+    "raw_transcript": "hey, [hissing]... this is report 52. we are at Boiler Room Hallway. inspecting g-generator which is GEN-501. there is a Excessive shaft vibration. uh code is F-MECH-VIB. severity is High. what I did: Cleaned air filter and ah blew out lines. we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "GEN-501",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 53,
+    "raw_transcript": "hey, well... this is report 53. [background chatter] we are at Basement Sump. inspecting c... compressor which is COMP-7A. there is a Bearing temperature overload. code is F-THERM-HOT. severity is Critical. what I [clanking] did: Cleaned air filter and blew out lines. we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Basement Sump",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 54,
+    "raw_transcript": "HYD-88 in North Yard is acting up. ah... a lot of armature winding. looks like Extreme gear backlash/wear. fault code F-MECH-WEAR. like severity [clanking] Medium. I just Cleaned air [background chatter] filter and blew out lines. need some... Hydraulic Fluid for it.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "North Yard",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 55,
+    "raw_transcript": "COMP-7A in Valve Pit 4 is acting up. like... a lot of armature winding. looks like Structural housing crack. fault code F-STRUCT-CRACK. [background chatter] severity High. I just Isolated and shut down unit manually. need [background chatter] some... Drive Belt for it.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Valve Pit 4",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": [
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 56,
+    "raw_transcript": "um hey, [static]... this is report 56. we are at Compressor Shed. inspecting Steam Boiler BOILER-3 which is BOILER-3. there is a Bearing temperature overload. code is F-THERM-HOT. severity is Critical. what I did: Patched outer housing with temporary casing plate. we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Compressor Shed",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Patched outer housing with temporary casing plate",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 57,
+    "raw_transcript": "hey, uh... this is report 57. we are at Auxiliary Pump Room. inspecting v-valve which is V-312. there is a Structural housing crack. code is F-STRUCT-CRACK. severity is High. what I did: [background chatter] Isolated and shut down unit manually. [static] we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "V-312",
+      "location": "Auxiliary Pump Room",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 58,
+    "raw_transcript": "like HYD-88 at Substation 3 has RTD sensor uh calibration [clanking] drift. severe fluid degradation. code is f elec calibr. severity level low. did a quick fix: Isolated and shut down unit manually. [clanking]... need no parts to finish well it.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Substation 3",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 59,
+    "raw_transcript": "ok so, checking in from Roof Deck Area 2. the c... compressor... that's COMP 7A... has a major issue. it's ah got Loss of system pressure. code F-HYD-PRESS. severity is definitely Medium. like... I had to Cleaned air filter and blew out lines. make sure to order [clanking] Hydraulic Fluid, Flange Gasket.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Hydraulic Fluid",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 60,
+    "raw_transcript": "um COMP-7A at uh Substation 3 has Structural ah housing crack. severe backlash play. code is f struct crack. severity level high. did ah a quick fix: Lubricated bearings and adjusted drive belt tension. well... need O-Ring, Flange Gasket to finish it.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Substation 3",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "O-Ring",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 61,
+    "raw_transcript": "BOILER-3 uh in Substation 3 is acting up. [background chatter]... a lot of armature winding. looks like Structural housing crack. fault code F-STRUCT-CRACK. um severity High. I just Replaced flange gasket and tightened bolts. need some... well RTD Sensor, Seal Kit for it.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Substation 3",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": [
+        "RTD Sensor",
+        "Seal Kit"
+      ]
+    }
+  },
+  {
+    "id": 62,
+    "raw_transcript": "T-402 in North Yard is acting up. [hissing]... a lot of stator core. looks like Loss of system pressure. fault code [hissing] F-HYD-PRESS. ah severity Medium. I like just Closed bypass valve and verified pressure drop. need some... Casing Plate for it.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "North Yard",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": [
+        "Casing Plate"
+      ]
+    }
+  },
+  {
+    "id": 63,
+    "raw_transcript": "ok so, checking in from Substation 3. um the compressor... that's COMP 7A... has well a major issue. it's got Structural housing crack. code F-STRUCT-CRACK. severity is definitely High. like... I had to Replaced flange gasket and tightened bolts. make sure to order no extra parts.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Substation 3",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 64,
+    "raw_transcript": "like uh V-99 at Basement Sump has Loss of system pressure. severe impeller wear. code is f hyd press. severity level medium. did a quick fix: Cleaned air filter and blew out lines. [hissing]... need Drive Belt, Flange Gasket to finish it.",
+    "ground_truth": {
+      "equipment_id": "V-99",
+      "location": "Basement Sump",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Drive Belt",
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 65,
+    "raw_transcript": "[static] V-99 at North Yard has Stator winding short circuit. severe shaft misalignment. code is f elec short. [clanking] severity level critical. did a quick fix: Refilled hydraulic ah fluid reservoir and checked seals. [static]... need RTD Sensor, Drive Belt to ah finish it.",
+    "ground_truth": {
+      "equipment_id": "V-99",
+      "location": "North Yard",
+      "fault_code": "F-ELEC-SHORT",
+      "severity": "Critical",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "RTD Sensor",
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 66,
+    "raw_transcript": "ok so, checking in from Turbine Room B. the valve... that's V 99... has a major issue. it's got Structural housing [hissing] [background chatter] crack. code F-STRUCT-CRACK. severity is definitely High. [clanking]... I had to Lubricated bearings and adjusted drive belt tension. make sure to order O-Ring, Hydraulic Fluid.",
+    "ground_truth": {
+      "equipment_id": "V-99",
+      "location": "Turbine Room B",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "O-Ring",
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 67,
+    "raw_transcript": "P-101 in Valve Pit 4 is acting up. [clanking]... a lot of backlash play. looks like Excessive shaft vibration. fault code F-MECH-VIB. uh severity High. I just Re-calibrated RTD temperature sensor. like need some... Casing Plate um like for it.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Valve Pit 4",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": [
+        "Casing Plate"
+      ]
+    }
+  },
+  {
+    "id": 68,
+    "raw_transcript": "hey, uh... this is report 68. we are at North Yard. inspecting c... compressor which is COMP-7A. there [clanking] is a RTD sensor calibration drift. code is F-ELEC-CALIBR. severity is Low. what I did: Replaced flange gasket and tightened bolts. we [clanking] will need O-Ring.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "North Yard",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": [
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 69,
+    "raw_transcript": "hey, [background chatter]... this is report 69. we are at Auxiliary Pump Room. inspecting Steam Boiler BOILER-3 which is BOILER-3. there is a Extreme gear backlash/wear. code is F-MECH-WEAR. severity is Medium. [hissing] what I did: Cleaned air filter and blew out lines. we will need [clanking] Flange Gasket, RTD Sensor.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Auxiliary Pump Room",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Flange Gasket",
+        "RTD Sensor"
+      ]
+    }
+  },
+  {
+    "id": 70,
+    "raw_transcript": "ok so, checking in from Compressor Shed. the t... turbine... that's T 402... has a major [hissing] issue. it's got RTD [clanking] sensor calibration drift. code F-ELEC-CALIBR. severity is definitely Low. [clanking]... I had to Cleaned air filter and blew out lines. make sure to order Ball Bearing, O-Ring.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Compressor Shed",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Ball Bearing",
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 71,
+    "raw_transcript": "ok so, checking in from North Yard. the Steam Boiler BOILER-3... [background chatter] that's BOILER 3... has a major issue. it's got Structural housing crack. uh [static] code F-STRUCT-CRACK. severity is definitely High. [clanking]... I had to Closed bypass valve and verified pressure drop. make sure to order Hydraulic Fluid, Seal Kit.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "North Yard",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": [
+        "Hydraulic Fluid",
+        "Seal Kit"
+      ]
+    }
+  },
+  {
+    "id": 72,
+    "raw_transcript": "COMP-7A in Hydraulics Bay is acting up. uh... a lot like [hissing] of armature winding. looks like Bearing temperature overload. fault code F-THERM-HOT. well severity Critical. [hissing] I just Re-calibrated RTD temperature sensor. need some... nothing for it.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 73,
+    "raw_transcript": "ok so, checking in from Roof Deck Area 2. the turbine... that's T 402... has a major issue. it's got Structural housing crack. code well F-STRUCT-CRACK. severity is definitely High. like... I had ah to Re-calibrated RTD temperature sensor. make sure to order Drive Belt.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Re-calibrated RTD temperature sensor",
+      "parts_required": [
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 74,
+    "raw_transcript": "ok so, checking in from [background chatter] Compressor Shed. the p-pump... ah that's P 204... has a major issue. it's got Stator winding short circuit. code F-ELEC-SHORT. severity is um definitely Critical. uh... I had to Closed bypass valve and verified pressure drop. make sure to order no extra parts.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Compressor Shed",
+      "fault_code": "F-ELEC-SHORT",
+      "severity": "Critical",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 75,
+    "raw_transcript": "hey, ah... this is report 75. we are at Roof Deck Area 2. inspecting t-turbine which is T-402. there is a Lube oil leakage. code is F-LEAK-OIL. severity is High. [hissing] what I did: Refilled hydraulic fluid reservoir and checked seals. we will need Casing Plate, Seal Kit. like",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "Casing Plate",
+        "Seal Kit"
+      ]
+    }
+  },
+  {
+    "id": 76,
+    "raw_transcript": "T-102 in Auxiliary Pump Room is acting [static] up. [background chatter]... a lot of backlash ah play. looks like Lube oil leakage. fault code F-LEAK-OIL. well severity High. I just Replaced flange gasket and tightened bolts. need some... nothing for it.",
+    "ground_truth": {
+      "equipment_id": "T-102",
+      "location": "Auxiliary Pump Room",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 77,
+    "raw_transcript": "ok so, checking in from Hydraulics Bay. the Steam Boiler BOILER-3... that's BOILER 3... has a major issue. it's got Excessive shaft vibration. code F-MECH-VIB. severity is definitely High. [background chatter]... I had to Replaced flange gasket and tightened bolts. make sure [clanking] to order Flange Gasket.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": [
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 78,
+    "raw_transcript": "HYD-88 in Boiler Room Hallway is um acting [static] up. ah... a lot of insulation resistance. looks like Excessive shaft vibration. fault well code F-MECH-VIB. uh severity High. I just Isolated and shut down unit manually. need some... O-Ring for it.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": [
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 79,
+    "raw_transcript": "[background chatter] [background chatter] COMP-7A at North Yard has RTD sensor calibration drift. severe cavitation sound. code is f elec calibr. severity level low. did a quick well fix: Cleaned air filter uh and blew out lines. [background chatter]... need Ball Bearing, Hydraulic Fluid to finish it.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "North Yard",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Ball Bearing",
+        "Hydraulic Fluid"
+      ]
+    }
+  },
+  {
+    "id": 80,
+    "raw_transcript": "um GEN-501 at Boiler Room Hallway has Lube oil leakage. severe backlash play. code is f leak [clanking] oil. severity level high. did a quick fix: Patched [hissing] [clanking] outer housing with temporary casing plate. like... need Seal Kit to finish it.",
+    "ground_truth": {
+      "equipment_id": "GEN-501",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Patched outer housing with temporary casing plate",
+      "parts_required": [
+        "Seal Kit"
+      ]
+    }
+  },
+  {
+    "id": 81,
+    "raw_transcript": "ok so, checking in from Substation 3. the Hydraulic Power Pack HYD-88... that's HYD 88... has a major issue. it's got Structural housing crack. code F-STRUCT-CRACK. severity is definitely High. um... I had to Replaced flange gasket and tightened bolts. make sure to order no extra um parts.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Substation 3",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 82,
+    "raw_transcript": "BOILER-3 in Roof Deck Area 2 is acting up. um... a lot of valve packing um leak. looks like Loss of system pressure. fault code F-HYD-PRESS. [hissing] severity Medium. I just Isolated and shut down unit manually. need some... nothing for it.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 83,
+    "raw_transcript": "COMP-7A [hissing] in Roof Deck Area 2 is acting up. [clanking]... a lot of stator core. looks like Lube oil leakage. fault code F-LEAK-OIL. [hissing] severity High. I just Lubricated bearings and adjusted drive belt tension. need some... O-Ring, Ball Bearing for it.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "O-Ring",
+        "Ball Bearing"
+      ]
+    }
+  },
+  {
+    "id": 84,
+    "raw_transcript": "hey, like... this is report um 84. we are at Valve Pit like 4. inspecting Cooling Tower Fan T-102 which is T-102. there is a Extreme gear backlash/wear. code is F-MECH-WEAR. severity is Medium. what I did: Replaced flange gasket and tightened bolts. we will need Drive Belt.",
+    "ground_truth": {
+      "equipment_id": "T-102",
+      "location": "Valve Pit 4",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": [
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 85,
+    "raw_transcript": "[background chatter] COMP-7A at Basement Sump has Loss [clanking] of system pressure. severe backlash play. code is f hyd press. severity level medium. did a quick fix: Closed bypass valve well and verified pressure drop. [background chatter]... need um no parts to finish it.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Basement Sump",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 86,
+    "raw_transcript": "[clanking] P-101 at Substation 3 has Extreme gear backlash/wear. severe fluid degradation. code is f mech wear. severity level medium. did a quick fix: Cleaned air filter and blew out lines. like... need Hydraulic Fluid, [hissing] O-Ring to finish it.",
+    "ground_truth": {
+      "equipment_id": "P-101",
+      "location": "Substation 3",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Hydraulic Fluid",
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 87,
+    "raw_transcript": "well P-204 at Roof Deck Area 2 has Lube oil leakage. severe differential pressure drop. code is f leak oil. severity level high. did a quick fix: Replaced flange gasket and tightened bolts. [clanking]... need Ball Bearing, O-Ring to finish uh it.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": [
+        "Ball Bearing",
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 88,
+    "raw_transcript": "ok so, checking in from Valve Pit 4. the Steam Boiler BOILER-3... that's BOILER 3... has a major uh issue. it's got Excessive shaft vibration. code F-MECH-VIB. severity is definitely High. [background well chatter]... I had to Lubricated bearings and adjusted drive [static] belt tension. make sure to order Ball Bearing, Seal Kit.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Valve Pit 4",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "Ball Bearing",
+        "Seal Kit"
+      ]
+    }
+  },
+  {
+    "id": 89,
+    "raw_transcript": "T-102 in Compressor Shed is acting up. [hissing]... a lot of fluid degradation. looks like Extreme gear backlash/wear. fault code um F-MECH-WEAR. ah severity Medium. [hissing] I just Closed bypass valve and verified pressure drop. need some... Seal Kit for it.",
+    "ground_truth": {
+      "equipment_id": "T-102",
+      "location": "Compressor Shed",
+      "fault_code": "F-MECH-WEAR",
+      "severity": "Medium",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": [
+        "Seal Kit"
+      ]
+    }
+  },
+  {
+    "id": 90,
+    "raw_transcript": "ok so, checking in from Valve Pit 4. the c... um compressor... that's COMP 7A... has a major issue. it's got Excessive shaft vibration. code F-MECH-VIB. severity is definitely High. ah... I had to Patched outer housing with temporary casing plate. make sure to order no extra parts.",
+    "ground_truth": {
+      "equipment_id": "COMP-7A",
+      "location": "Valve Pit 4",
+      "fault_code": "F-MECH-VIB",
+      "severity": "High",
+      "maintenance_action": "Patched outer housing with temporary casing plate",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 91,
+    "raw_transcript": "BOILER-3 in Boiler Room Hallway is acting up. uh... a lot of fluid degradation. looks like Bearing temperature overload. fault code F-THERM-HOT. [static] severity Critical. I just Lubricated bearings and adjusted drive belt tension. need some... O-Ring um for it.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-THERM-HOT",
+      "severity": "Critical",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 92,
+    "raw_transcript": "ok so, checking in from Turbine Room B. the t... turbine... that's T 402... has a major issue. it's got Loss of system pressure. code F-HYD-PRESS. severity is definitely Medium. [static]... I had to Cleaned air well filter and blew out lines. make sure to order O-Ring, Ball Bearing.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Turbine Room B",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "O-Ring",
+        "Ball Bearing"
+      ]
+    }
+  },
+  {
+    "id": 93,
+    "raw_transcript": "V-312 in Boiler Room Hallway is acting up. [clanking]... a lot of backlash play. looks like Loss of system pressure. fault code F-HYD-PRESS. [clanking] severity Medium. I just Replaced flange gasket and tightened bolts. need some... O-Ring for well it.",
+    "ground_truth": {
+      "equipment_id": "V-312",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": [
+        "O-Ring"
+      ]
+    }
+  },
+  {
+    "id": 94,
+    "raw_transcript": "like V-99 at Valve Pit 4 has Lube oil leakage. severe backlash play. code is f leak oil. severity level high. did a quick fix: uh Isolated and shut down unit manually. well... need no parts to finish it.",
+    "ground_truth": {
+      "equipment_id": "V-99",
+      "location": "Valve Pit 4",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Isolated and shut down unit manually",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 95,
+    "raw_transcript": "BOILER-3 in Boiler like Room Hallway is acting up. um... well a lot of armature winding. looks like RTD sensor calibration drift. fault code F-ELEC-CALIBR. ah severity Low. I just Closed bypass valve and verified pressure drop. need some... Flange ah Gasket for it.",
+    "ground_truth": {
+      "equipment_id": "BOILER-3",
+      "location": "Boiler Room Hallway",
+      "fault_code": "F-ELEC-CALIBR",
+      "severity": "Low",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": [
+        "Flange Gasket"
+      ]
+    }
+  },
+  {
+    "id": 96,
+    "raw_transcript": "hey, [static]... this is report 96. we are well at Compressor Shed. inspecting well p... pump which is P-204. there like is a Lube oil leakage. code is F-LEAK-OIL. severity is High. what I did: Replaced flange gasket and tightened bolts. we will need no parts.",
+    "ground_truth": {
+      "equipment_id": "P-204",
+      "location": "Compressor Shed",
+      "fault_code": "F-LEAK-OIL",
+      "severity": "High",
+      "maintenance_action": "Replaced flange gasket and tightened bolts",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 97,
+    "raw_transcript": "[background chatter] HYD-88 at Roof Deck Area 2 has Structural housing crack. severe impeller wear. code is f struct uh crack. severity level high. did a quick fix: Lubricated bearings and adjusted drive belt tension. uh... need Casing Plate to finish it.",
+    "ground_truth": {
+      "equipment_id": "HYD-88",
+      "location": "Roof Deck Area 2",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Lubricated bearings and adjusted drive belt tension",
+      "parts_required": [
+        "Casing Plate"
+      ]
+    }
+  },
+  {
+    "id": 98,
+    "raw_transcript": "hey, uh... this is report 98. we are at Hydraulics Bay. inspecting v-valve which is V-312. there is a Structural housing crack. code is F-STRUCT-CRACK. severity is High. uh what [background chatter] I did: Cleaned air filter and blew out lines. we will need Drive Belt.",
+    "ground_truth": {
+      "equipment_id": "V-312",
+      "location": "Hydraulics Bay",
+      "fault_code": "F-STRUCT-CRACK",
+      "severity": "High",
+      "maintenance_action": "Cleaned air filter and blew out lines",
+      "parts_required": [
+        "Drive Belt"
+      ]
+    }
+  },
+  {
+    "id": 99,
+    "raw_transcript": "ok so, checking in from Valve [hissing] Pit 4. the v-valve... that's V 312... has a major issue. it's got Loss of system pressure. code F-HYD-PRESS. severity is definitely Medium. [clanking]... I had to Closed bypass valve and verified pressure drop. make sure to order no like extra parts.",
+    "ground_truth": {
+      "equipment_id": "V-312",
+      "location": "Valve Pit 4",
+      "fault_code": "F-HYD-PRESS",
+      "severity": "Medium",
+      "maintenance_action": "Closed bypass valve and verified pressure drop",
+      "parts_required": []
+    }
+  },
+  {
+    "id": 100,
+    "raw_transcript": "T-402 in Valve Pit 4 is acting up. um... a lot [static] of differential pressure drop. looks like Stator winding short circuit. fault code F-ELEC-SHORT. like [static] severity Critical. I just Refilled hydraulic fluid reservoir and checked seals. need some... O-Ring, RTD Sensor for it.",
+    "ground_truth": {
+      "equipment_id": "T-402",
+      "location": "Valve Pit 4",
+      "fault_code": "F-ELEC-SHORT",
+      "severity": "Critical",
+      "maintenance_action": "Refilled hydraulic fluid reservoir and checked seals",
+      "parts_required": [
+        "O-Ring",
+        "RTD Sensor"
+      ]
+    }
+  }
+]
