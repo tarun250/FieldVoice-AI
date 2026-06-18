@@ -31,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _isCheckingRealtime = false;
   bool _isStartingRecording = false;
   bool _isBackgroundListening = false;
+  bool _isHandsFreeMode = false;
 
   // Network and Sync States
   bool _isOnline = true;
@@ -150,9 +151,92 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  Widget _buildHandsFreeBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: _isHandsFreeMode ? Colors.green[700] : Colors.blueGrey[800],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _isHandsFreeMode ? Icons.headset_mic : Icons.headset_mic_outlined,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _isHandsFreeMode ? 'HANDS-FREE CONTROL ON' : 'MANUAL CONTROL ONLY',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: _isHandsFreeMode ? Colors.green[800] : Colors.blueGrey[900],
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            ),
+            onPressed: () {
+              if (_isHandsFreeMode) {
+                _disableHandsFreeMode();
+              } else {
+                _enableHandsFreeMode();
+              }
+            },
+            child: Text(
+              _isHandsFreeMode ? 'STOP HANDS-FREE' : 'START HANDS-FREE',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _enableHandsFreeMode() async {
+    setState(() {
+      _isHandsFreeMode = true;
+    });
+    await _startAlwaysListening();
+  }
+
+  Future<void> _disableHandsFreeMode() async {
+    _realtimeCheckTimer?.cancel();
+    _realtimeCheckTimer = null;
+    await _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
+    await _audioService.stopRecording();
+    await _audioService.stopAudio();
+    _cancelConfirmationRecording();
+
+    setState(() {
+      _isHandsFreeMode = false;
+      _isBackgroundListening = false;
+      _isRecording = false;
+      _isProcessing = false;
+      _waitingForVoiceConfirmation = false;
+      _extractedData = null;
+      _rawTranscript = null;
+      _ragResponse = null;
+      _statusMessage = 'Hands-free mode disabled. System ready.';
+    });
+  }
+
   // Handle Recording Trigger
   // Continuous background listening state
   Future<void> _startAlwaysListening() async {
+    if (!_isHandsFreeMode) return;
     if (_isRecording || _isBackgroundListening || _isProcessing || _waitingForVoiceConfirmation || _isStartingRecording) return;
     
     // Check permission first
@@ -301,53 +385,55 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _audioBytesBuilder.add(chunk);
         });
 
-        _isCheckingRealtime = false;
-        _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
-          if (_isCheckingRealtime || !_isRecording || !_isOnline) return;
-          _isCheckingRealtime = true;
+        if (_isHandsFreeMode) {
+          _isCheckingRealtime = false;
+          _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
+            if (_isCheckingRealtime || !_isRecording || !_isOnline) return;
+            _isCheckingRealtime = true;
 
-          try {
-            final pcmBytes = _audioBytesBuilder.toBytes();
-            if (pcmBytes.isEmpty) {
+            try {
+              final pcmBytes = _audioBytesBuilder.toBytes();
+              if (pcmBytes.isEmpty) {
+                _isCheckingRealtime = false;
+                return;
+              }
+
+              // Slice last 5 seconds
+              final int chunkLength = 16000 * 2 * 5;
+              final Uint8List checkBytes;
+              if (pcmBytes.length <= chunkLength) {
+                checkBytes = pcmBytes;
+              } else {
+                checkBytes = Uint8List.sublistView(pcmBytes, pcmBytes.length - chunkLength);
+              }
+
+              final tempDir = await getTemporaryDirectory();
+              final tempPath = '${tempDir.path}/realtime_chunk.wav';
+              await _audioService.savePcmToWav(checkBytes, tempPath);
+
+              final res = await _apiService.transcribeAudio(
+                tempPath,
+                'realtime-${DateTime.now().millisecondsSinceEpoch}',
+              );
+              final text = (res['text'] as String).toLowerCase();
+              print('Recording checker transcript: $text');
+
+              if (_activeMode == 'inspection') {
+                if (text.contains('stop inspection') || text.contains('stop recording') || text.contains('finish inspection')) {
+                  _triggerStopInspection();
+                }
+              } else {
+                if (text.contains('stop query') || text.contains('stop recording') || text.contains('finish query')) {
+                  _triggerStopInspection();
+                }
+              }
+            } catch (e) {
+              print('Error in recording check: $e');
+            } finally {
               _isCheckingRealtime = false;
-              return;
             }
-
-            // Slice last 5 seconds
-            final int chunkLength = 16000 * 2 * 5;
-            final Uint8List checkBytes;
-            if (pcmBytes.length <= chunkLength) {
-              checkBytes = pcmBytes;
-            } else {
-              checkBytes = Uint8List.sublistView(pcmBytes, pcmBytes.length - chunkLength);
-            }
-
-            final tempDir = await getTemporaryDirectory();
-            final tempPath = '${tempDir.path}/realtime_chunk.wav';
-            await _audioService.savePcmToWav(checkBytes, tempPath);
-
-            final res = await _apiService.transcribeAudio(
-              tempPath,
-              'realtime-${DateTime.now().millisecondsSinceEpoch}',
-            );
-            final text = (res['text'] as String).toLowerCase();
-            print('Recording checker transcript: $text');
-
-            if (_activeMode == 'inspection') {
-              if (text.contains('stop inspection') || text.contains('stop recording') || text.contains('finish inspection')) {
-                _triggerStopInspection();
-              }
-            } else {
-              if (text.contains('stop query') || text.contains('stop recording') || text.contains('finish query')) {
-                _triggerStopInspection();
-              }
-            }
-          } catch (e) {
-            print('Error in recording check: $e');
-          } finally {
-            _isCheckingRealtime = false;
-          }
-        });
+          });
+        }
       } else {
         setState(() {
           _isRecording = false;
@@ -466,7 +552,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           await _audioService.playUrl(fullUrl);
         }
 
-        _startVoiceConfirmationListener();
+        if (_isHandsFreeMode) {
+          _startVoiceConfirmationListener();
+        } else {
+          setState(() {
+            _statusMessage = 'Reviewing report... Tap CONFIRM or REJECT to submit.';
+          });
+        }
       } else {
         final queryResult = await _apiService.queryKnowledgeBase(transcriptText);
         final answer = queryResult['resolved_answer'] ?? queryResult['answer'] ?? '';
@@ -707,14 +799,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         const SnackBar(content: Text('Work Order created successfully.')),
       );
 
-      try {
-        final ttsUrl = await _apiService.generateTTS('work order created successfully');
-        if (ttsUrl != null) {
-          await _audioService.playUrl('${AppConstants.backendUrl}$ttsUrl');
-        }
-      } catch (_) {}
-
-      _startAlwaysListening();
+      if (_isHandsFreeMode) {
+        try {
+          final ttsUrl = await _apiService.generateTTS('work order created successfully');
+          if (ttsUrl != null) {
+            await _audioService.playUrl('${AppConstants.backendUrl}$ttsUrl');
+          }
+        } catch (_) {}
+        _startAlwaysListening();
+      } else {
+        setState(() {
+          _statusMessage = 'System ready. Tap START INSPECTION to begin.';
+        });
+      }
     } catch (e) {
       setState(() {
         _isProcessing = false;
@@ -723,7 +820,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to submit work order: ${e.toString()}')),
       );
-      _startAlwaysListening();
+      if (_isHandsFreeMode) {
+        _startAlwaysListening();
+      }
     }
   }
 
@@ -1049,9 +1148,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         _extractedData = null;
                         _rawTranscript = null;
                         _currentAudioStorageUrl = null;
-                        _statusMessage = 'Report rejected. Tap START to record again.';
+                        _statusMessage = 'Report rejected. Tap START INSPECTION to record again.';
                         _isRecording = false;
                       });
+                      if (_isHandsFreeMode) {
+                        try {
+                          _apiService.generateTTS('report rejected').then((ttsUrl) {
+                            if (ttsUrl != null) {
+                              _audioService.playUrl('${AppConstants.backendUrl}$ttsUrl');
+                            }
+                          });
+                        } catch (_) {}
+                        _startAlwaysListening();
+                      }
                     },
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1575,6 +1684,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
           ),
+
+          // Hands-Free Mode Banner
+          _buildHandsFreeBanner(),
 
           // Offline Warn Banner
           if (!_isOnline)
