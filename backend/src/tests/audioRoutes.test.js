@@ -6,6 +6,7 @@ const sttService = require('../services/sttService');
 
 // Mock sttService to isolate route testing
 jest.mock('../services/sttService');
+jest.mock('../services/ttsService');
 
 describe('Audio Routes Integration Tests', () => {
   const dummyFileDir = path.join(__dirname, 'fixtures');
@@ -132,6 +133,40 @@ describe('Audio Routes Integration Tests', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.error_code).toBe('INVALID_FILENAME');
+    });
+  });
+
+  describe('POST /api/audio/tts', () => {
+    test('Should successfully synthesize text to speech', async () => {
+      const ttsService = require('../services/ttsService');
+      ttsService.synthesize.mockResolvedValue('/uploads/speech-mock.mp3');
+
+      const response = await request(app)
+        .post('/api/audio/tts')
+        .send({ text: 'Inspection started' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.tts_audio_url).toBe('/uploads/speech-mock.mp3');
+      expect(ttsService.synthesize).toHaveBeenCalledWith('Inspection started');
+    });
+
+    test('Should return 400 if text is missing', async () => {
+      const response = await request(app)
+        .post('/api/audio/tts')
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.error_code).toBe('MISSING_TEXT');
+    });
+
+    test('Should return 400 if text is empty', async () => {
+      const response = await request(app)
+        .post('/api/audio/tts')
+        .send({ text: ' ' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error_code).toBe('MISSING_TEXT');
     });
   });
 });

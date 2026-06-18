@@ -29,7 +29,7 @@ class TTSService {
           model: 'canopylabs/orpheus-v1-english',
           input: text,
           voice: 'autumn',
-          response_format: 'mp3',
+          response_format: 'wav',
         }),
       });
 
@@ -44,7 +44,7 @@ class TTSService {
 
       // Save file inside standard uploads directory
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const filename = `speech-${uniqueSuffix}.mp3`;
+      const filename = `speech-${uniqueSuffix}.wav`;
       const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
       
       if (!fs.existsSync(uploadsDir)) {

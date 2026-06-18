@@ -101,6 +101,36 @@ class AudioController {
       });
     }
   }
+
+  /**
+   * Synthesize text to speech
+   */
+  async generateTTS(req, res) {
+    try {
+      const { text } = req.body;
+      if (!text || typeof text !== 'string' || text.trim() === '') {
+        return res.status(400).json({
+          error_code: 'MISSING_TEXT',
+          message: 'Parameter "text" is required as a non-empty string in the request body.'
+        });
+      }
+
+      const ttsService = require('../services/ttsService');
+      const ttsAudioUrl = await ttsService.synthesize(text);
+
+      return res.status(200).json({
+        success: true,
+        tts_audio_url: ttsAudioUrl
+      });
+    } catch (error) {
+      console.error('AudioController TTS Error:', error);
+      return res.status(500).json({
+        error_code: 'TTS_FAILED',
+        message: 'Failed to generate speech synthesis.',
+        details: error.message
+      });
+    }
+  }
 }
 
 module.exports = new AudioController();

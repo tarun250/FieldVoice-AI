@@ -54,4 +54,7 @@ router.post('/transcribe', (req, res, next) => {
 // Route for supervisor deletion: DELETE /api/audio/:filename
 router.delete('/:filename', audioController.deleteAudio);
 
+// Route for text-to-speech synthesis: POST /api/audio/tts
+router.post('/tts', audioController.generateTTS);
+
 module.exports = router;

@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Timer? _realtimeCheckTimer;
   bool _isCheckingRealtime = false;
   bool _isStartingRecording = false;
+  bool _isBackgroundListening = false;
 
   // Network and Sync States
   bool _isOnline = true;
@@ -101,6 +102,33 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _initDatabase() async {
     // Access database to update pending count badge
     await _refreshPendingCount();
+    _startAlwaysListening();
+  }
+
+  void _switchMode(String mode) {
+    if (_activeMode == mode) return;
+
+    // Stop continuous listening
+    _realtimeCheckTimer?.cancel();
+    _realtimeCheckTimer = null;
+    _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
+    _audioService.stopRecording();
+    _audioService.stopAudio();
+    _cancelConfirmationRecording();
+
+    setState(() {
+      _activeMode = mode;
+      _isBackgroundListening = false;
+      _isRecording = false;
+      _isProcessing = false;
+      _waitingForVoiceConfirmation = false;
+      _extractedData = null;
+      _rawTranscript = null;
+      _ragResponse = null;
+    });
+
+    _startAlwaysListening();
   }
 
   Future<void> _refreshPendingCount() async {
@@ -113,6 +141,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _connectivitySubscription.cancel();
+    _realtimeCheckTimer?.cancel();
+    _audioStreamSubscription?.cancel();
     _audioService.dispose();
     _ttsService.stop();
     _pulseController.dispose();
@@ -121,40 +151,140 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   // Handle Recording Trigger
-  Future<void> _startRecording() async {
-    if (_isRecording || _isStartingRecording) return;
+  // Continuous background listening state
+  Future<void> _startAlwaysListening() async {
+    if (_isRecording || _isBackgroundListening || _isProcessing || _waitingForVoiceConfirmation || _isStartingRecording) return;
     
-    _isStartingRecording = true;
-    _cancelConfirmationRecording();
-    await _audioService.stopAudio(); // Stop any active reading voice
-    
-    setState(() {
-      _statusMessage = 'Starting inspection...';
-    });
-
-    if (!mounted) {
-      _isStartingRecording = false;
-      return;
-    }
-
-    await _startRecordingExecution();
-  }
-
-  Future<void> _startRecordingExecution() async {
     // Check permission first
     final hasPerm = await _audioService.checkPermission();
     if (!hasPerm) {
       setState(() {
-        _statusMessage = 'Microphone permission denied.';
-        _isStartingRecording = false;
+        _statusMessage = 'Microphone permission required for always-listening mode.';
       });
       return;
     }
 
     setState(() {
+      _isBackgroundListening = true;
+      _statusMessage = _activeMode == 'inspection'
+          ? 'Always listening... Say "start inspection" or tap START INSPECTION.'
+          : 'Always listening... Say "start query" or tap START QUERY.';
+    });
+
+    _audioBytesBuilder.clear();
+
+    try {
+      final stream = await _audioService.startStream();
+      if (stream != null) {
+        _audioStreamSubscription = stream.listen((chunk) {
+          _audioBytesBuilder.add(chunk);
+          
+          final bytes = _audioBytesBuilder.toBytes();
+          final int limit = 16000 * 2 * 6; // 6 seconds limit
+          if (bytes.length > limit) {
+            final keepBytes = bytes.sublist(bytes.length - limit);
+            _audioBytesBuilder.clear();
+            _audioBytesBuilder.add(keepBytes);
+          }
+        });
+
+        _isCheckingRealtime = false;
+        _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
+          if (_isCheckingRealtime || !_isBackgroundListening || !_isOnline) return;
+          _isCheckingRealtime = true;
+
+          try {
+            final pcmBytes = _audioBytesBuilder.toBytes();
+            if (pcmBytes.isEmpty) {
+              _isCheckingRealtime = false;
+              return;
+            }
+
+            final tempDir = await getTemporaryDirectory();
+            final tempPath = '${tempDir.path}/background_chunk.wav';
+            await _audioService.savePcmToWav(pcmBytes, tempPath);
+
+            final res = await _apiService.transcribeAudio(
+              tempPath,
+              'bg-${DateTime.now().millisecondsSinceEpoch}',
+            );
+            final text = (res['text'] as String).toLowerCase();
+            print('Background checker transcript: $text');
+
+            if (_activeMode == 'inspection') {
+              if (text.contains('start inspection') || text.contains('begin inspection')) {
+                _triggerStartInspection();
+              }
+            } else {
+              if (text.contains('start query') || text.contains('ask manual') || text.contains('ask query')) {
+                _triggerStartInspection();
+              }
+            }
+          } catch (e) {
+            print('Error in background check: $e');
+          } finally {
+            _isCheckingRealtime = false;
+          }
+        });
+      } else {
+        setState(() {
+          _isBackgroundListening = false;
+          _statusMessage = 'Failed to initialize background listening.';
+        });
+      }
+    } catch (e) {
+      print('Failed to start continuous background listening: $e');
+      setState(() {
+        _isBackgroundListening = false;
+        _statusMessage = 'Listening error: $e';
+      });
+    }
+  }
+
+  Future<void> _triggerStartInspection() async {
+    if (_isRecording || _isStartingRecording) return;
+    
+    _isStartingRecording = true;
+    _cancelConfirmationRecording();
+    _realtimeCheckTimer?.cancel();
+    _realtimeCheckTimer = null;
+    await _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
+    await _audioService.stopRecording();
+    await _audioService.stopAudio(); // Stop any active reading voice
+    
+    setState(() {
+      _isBackgroundListening = false;
+      _isProcessing = true;
+      _statusMessage = _activeMode == 'inspection' ? 'Starting inspection...' : 'Starting query...';
+    });
+
+    // Play synthesized start speech
+    try {
+      final textToSpeak = _activeMode == 'inspection' ? 'inspection started' : 'query started';
+      final ttsUrl = await _apiService.generateTTS(textToSpeak);
+      if (ttsUrl != null) {
+        final fullUrl = '${AppConstants.backendUrl}$ttsUrl';
+        print('Playing start TTS: $fullUrl');
+        await _audioService.playUrl(fullUrl);
+      }
+    } catch (e) {
+      print('Failed to play start speech: $e');
+    }
+
+    if (!mounted) {
+      _isStartingRecording = false;
+      _isProcessing = false;
+      return;
+    }
+
+    setState(() {
+      _isProcessing = false;
       _waitingForVoiceConfirmation = false;
       _isRecording = true;
-      _statusMessage = 'Recording audio... Speak clearly.';
+      _statusMessage = _activeMode == 'inspection'
+          ? 'Recording inspection... Say "stop inspection" or tap STOP INSPECTION.'
+          : 'Recording question... Say "stop query" or tap STOP QUERY.';
       _rawTranscript = null;
       _extractedData = null;
       _ragResponse = null;
@@ -171,7 +301,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _audioBytesBuilder.add(chunk);
         });
 
-        // Start 2.5-second timer to check for "stop inspection" or "stop recording" keyword
         _isCheckingRealtime = false;
         _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
           if (_isCheckingRealtime || !_isRecording || !_isOnline) return;
@@ -184,8 +313,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               return;
             }
 
-            // Slice the last 5 seconds of audio for transcription check to limit Groq Whisper limit usage
-            final int chunkLength = 16000 * 2 * 5; // 5 seconds at 16kHz 16-bit mono PCM
+            // Slice last 5 seconds
+            final int chunkLength = 16000 * 2 * 5;
             final Uint8List checkBytes;
             if (pcmBytes.length <= chunkLength) {
               checkBytes = pcmBytes;
@@ -202,13 +331,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               'realtime-${DateTime.now().millisecondsSinceEpoch}',
             );
             final text = (res['text'] as String).toLowerCase();
-            print('Real-time checker transcript: $text');
+            print('Recording checker transcript: $text');
 
-            if (text.contains('stop inspection') || text.contains('stop recording')) {
-              _stopRecordingAndProcess();
+            if (_activeMode == 'inspection') {
+              if (text.contains('stop inspection') || text.contains('stop recording') || text.contains('finish inspection')) {
+                _triggerStopInspection();
+              }
+            } else {
+              if (text.contains('stop query') || text.contains('stop recording') || text.contains('finish query')) {
+                _triggerStopInspection();
+              }
             }
           } catch (e) {
-            print('Error in real-time check: $e');
+            print('Error in recording check: $e');
           } finally {
             _isCheckingRealtime = false;
           }
@@ -217,6 +352,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         setState(() {
           _isRecording = false;
           _statusMessage = 'Failed to initialize audio stream.';
+          _startAlwaysListening();
         });
       }
     } catch (e) {
@@ -224,13 +360,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       setState(() {
         _isRecording = false;
         _statusMessage = 'Recording error: $e';
+        _startAlwaysListening();
       });
     }
 
     _isStartingRecording = false;
   }
 
-  Future<void> _stopRecordingAndProcess() async {
+  Future<void> _triggerStopInspection() async {
     if (!_isRecording) return;
     
     _pulseController.stop();
@@ -240,13 +377,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _realtimeCheckTimer = null;
     await _audioStreamSubscription?.cancel();
     _audioStreamSubscription = null;
-    
-    // Stop recording stream on device
     await _audioService.stopRecording();
     
     setState(() {
       _isRecording = false;
+      _isProcessing = true;
+      _statusMessage = _activeMode == 'inspection' ? 'Stopping inspection...' : 'Stopping query...';
     });
+
+    // Play synthesized stop speech
+    try {
+      final textToSpeak = _activeMode == 'inspection' ? 'inspection stopped' : 'query stopped';
+      final ttsUrl = await _apiService.generateTTS(textToSpeak);
+      if (ttsUrl != null) {
+        final fullUrl = '${AppConstants.backendUrl}$ttsUrl';
+        print('Playing stop TTS: $fullUrl');
+        await _audioService.playUrl(fullUrl);
+      }
+    } catch (e) {
+      print('Failed to play stop speech: $e');
+    }
 
     final finalBytes = _audioBytesBuilder.toBytes();
     if (finalBytes.isNotEmpty) {
@@ -260,16 +410,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _processAudioLive(finalPath);
         } else {
           _enqueueAudioOffline(finalPath);
+          _startAlwaysListening();
         }
       } catch (e) {
         print('Error saving WAV file: $e');
         setState(() {
+          _isProcessing = false;
           _statusMessage = 'Error saving recording: $e';
+          _startAlwaysListening();
         });
       }
     } else {
       setState(() {
+        _isProcessing = false;
         _statusMessage = 'No audio captured.';
+        _startAlwaysListening();
       });
     }
   }
@@ -282,7 +437,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
 
     try {
-      // Step A: Transcribe audio (no local transcript since on-device speech-to-text is disabled)
       final sttResult = await _apiService.transcribeAudio(
         filePath, 
         'live-tx-${DateTime.now().millisecondsSinceEpoch}',
@@ -296,7 +450,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       });
 
       if (_activeMode == 'inspection') {
-        // Step B: Extract structured fields
         final extractResult = await _apiService.extractStructuredData(transcriptText);
         setState(() {
           _extractedData = extractResult;
@@ -306,7 +459,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _statusMessage = 'Reviewing report... Playing readback.';
         });
 
-        // Play the neural confirmation TTS from the backend
         final ttsAudioUrl = extractResult['tts_audio_url'] as String?;
         if (ttsAudioUrl != null) {
           final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
@@ -314,10 +466,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           await _audioService.playUrl(fullUrl);
         }
 
-        // Start listening for hands-free confirmation keywords
         _startVoiceConfirmationListener();
       } else {
-        // Step B: RAG Search manual
         final queryResult = await _apiService.queryKnowledgeBase(transcriptText);
         final answer = queryResult['resolved_answer'] ?? queryResult['answer'] ?? '';
         final ttsAudioUrl = queryResult['tts_audio_url'] as String?;
@@ -328,12 +478,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _statusMessage = 'Query answered. Review response.';
         });
 
-        // Play the neural query answer TTS from the backend
         if (ttsAudioUrl != null) {
           final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
           print('Playing query answer TTS from URL: $fullUrl');
           await _audioService.playUrl(fullUrl);
         }
+        
+        _startAlwaysListening();
       }
     } catch (e) {
       setState(() {
@@ -343,12 +494,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Processing Failed: ${e.toString()}')),
       );
+      _startAlwaysListening();
     }
   }
 
-  // Hands-free voice confirmation completion handler
   void _onTtsCompleted() {
-    // No-op (TTS playback completion is handled inline via await in _processAudioLive)
+    // No-op
   }
 
   void _cancelConfirmationRecording() {
@@ -359,7 +510,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _startVoiceConfirmationListener({bool resetTimer = true}) async {
     if (!mounted || !_waitingForVoiceConfirmation) return;
     
-    // Stop any active recording/listening stream first
     _realtimeCheckTimer?.cancel();
     _realtimeCheckTimer = null;
     await _audioStreamSubscription?.cancel();
@@ -381,7 +531,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _audioBytesBuilder.add(chunk);
         });
 
-        // Start 2.5-second timer to check for "confirm" or "cancel" keywords
         _isCheckingRealtime = false;
         _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
           if (_isCheckingRealtime || !_isRecording || !_isOnline) return;
@@ -394,8 +543,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               return;
             }
 
-            // Slice the last 5 seconds of audio for transcription check
-            final int chunkLength = 16000 * 2 * 5; // 5 seconds of PCM
+            final int chunkLength = 16000 * 2 * 5;
             final Uint8List checkBytes;
             if (pcmBytes.length <= chunkLength) {
               checkBytes = pcmBytes;
@@ -453,7 +601,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     if (resetTimer) {
       _confirmationTimer?.cancel();
-      // Automatically time out confirmation after 30 seconds of silence/no input
       _confirmationTimer = Timer(const Duration(seconds: 30), () async {
         if (_waitingForVoiceConfirmation) {
           _realtimeCheckTimer?.cancel();
@@ -469,6 +616,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             _isRecording = false;
             _statusMessage = 'Confirmation timed out. Submit manually.';
           });
+          _startAlwaysListening();
         }
       });
     }
@@ -497,11 +645,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _isProcessing = false;
           _statusMessage = 'Report rejected. Tap START to record again.';
         });
+        try {
+          final ttsUrl = await _apiService.generateTTS('report rejected');
+          if (ttsUrl != null) {
+            await _audioService.playUrl('${AppConstants.backendUrl}$ttsUrl');
+          }
+        } catch (_) {}
+        _startAlwaysListening();
       } else {
         setState(() {
           _isProcessing = false;
           _statusMessage = 'Did not recognize command. Please tap buttons manually.';
         });
+        _startVoiceConfirmationListener(resetTimer: false);
       }
     } catch (e) {
       setState(() {
@@ -511,6 +667,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Voice Confirmation failed: ${e.toString()}. Please tap buttons manually.')),
       );
+      _startAlwaysListening();
     }
   }
 
@@ -549,6 +706,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Work Order created successfully.')),
       );
+
+      try {
+        final ttsUrl = await _apiService.generateTTS('work order created successfully');
+        if (ttsUrl != null) {
+          await _audioService.playUrl('${AppConstants.backendUrl}$ttsUrl');
+        }
+      } catch (_) {}
+
+      _startAlwaysListening();
     } catch (e) {
       setState(() {
         _isProcessing = false;
@@ -557,6 +723,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to submit work order: ${e.toString()}')),
       );
+      _startAlwaysListening();
     }
   }
 
@@ -1024,12 +1191,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       decoration: BoxDecoration(
         color: _isRecording
             ? Colors.red[50]
-            : (_isProcessing ? Colors.blue[50] : Colors.white),
+            : (_isProcessing
+                ? Colors.blue[50]
+                : (_isBackgroundListening ? Colors.green[50] : Colors.white)),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _isRecording
               ? Colors.red[300]!
-              : (_isProcessing ? Colors.blue[300]! : Colors.blueGrey[200]!),
+              : (_isProcessing
+                  ? Colors.blue[300]!
+                  : (_isBackgroundListening ? Colors.green[300]! : Colors.blueGrey[200]!)),
           width: 2.5,
         ),
         boxShadow: [
@@ -1079,6 +1250,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             )
           else if (_waitingForVoiceConfirmation)
             Icon(Icons.record_voice_over, size: compact ? 32 : 48, color: Colors.green[600])
+          else if (_isBackgroundListening)
+            Icon(Icons.mic, size: compact ? 32 : 48, color: Colors.green[600])
           else
             Icon(Icons.mic_none, size: compact ? 32 : 48, color: Colors.blueGrey[600]),
 
@@ -1092,7 +1265,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ? 'PROCESSING SPEECH...'
                     : (_waitingForVoiceConfirmation
                         ? 'WAITING FOR CONFIRMATION'
-                        : 'SYSTEM READY')),
+                        : (_isBackgroundListening ? 'ALWAYS LISTENING...' : 'SYSTEM READY'))),
             style: TextStyle(
               fontSize: compact ? 11 : 13,
               fontWeight: FontWeight.bold,
@@ -1100,19 +1273,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ? Colors.red[700]
                   : (_isProcessing
                       ? Colors.blue[700]
-                      : (_waitingForVoiceConfirmation ? Colors.green[700] : Colors.blueGrey[800])),
+                      : (_waitingForVoiceConfirmation
+                          ? Colors.green[700]
+                          : (_isBackgroundListening ? Colors.green[800] : Colors.blueGrey[800]))),
               letterSpacing: 1.0,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             _isRecording
-                ? 'Speak inspection details. Tap STOP when finished.'
+                ? (_activeMode == 'inspection' ? 'Speak inspection details. Tap STOP when finished.' : 'Speak question. Tap STOP when finished.')
                 : (_isProcessing
-                    ? 'Transcribing and analyzing report...'
+                    ? 'Transcribing and analyzing...'
                     : (_waitingForVoiceConfirmation
                         ? 'Tap CONFIRM or REJECT to submit or discard.'
-                        : 'Tap START below to begin inspection.')),
+                        : (_isBackgroundListening
+                            ? (_activeMode == 'inspection'
+                                ? 'Say "start inspection" or tap START below.'
+                                : 'Say "start query" or tap START below.')
+                            : 'Tap START below to begin.'))),
             style: TextStyle(
               fontSize: compact ? 10 : 12,
               color: Colors.blueGrey[600],
@@ -1135,17 +1314,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     padding: EdgeInsets.symmetric(vertical: compact ? 10 : 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  onPressed: canStart ? () => _startRecording() : null,
+                  onPressed: canStart ? () => _triggerStartInspection() : null,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.play_arrow, size: compact ? 16 : 20),
                       const SizedBox(width: 8),
                       Text(
-                        'START',
+                        _activeMode == 'inspection' ? 'START INSPECTION' : 'START QUERY',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: compact ? 12 : 14,
+                          fontSize: compact ? 10 : 12,
                         ),
                       ),
                     ],
@@ -1163,17 +1342,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     padding: EdgeInsets.symmetric(vertical: compact ? 10 : 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  onPressed: canStop ? () => _stopRecordingAndProcess() : null,
+                  onPressed: canStop ? () => _triggerStopInspection() : null,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.stop, size: compact ? 16 : 20),
                       const SizedBox(width: 8),
                       Text(
-                        'STOP',
+                        _activeMode == 'inspection' ? 'STOP INSPECTION' : 'STOP QUERY',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: compact ? 12 : 14,
+                          fontSize: compact ? 10 : 12,
                         ),
                       ),
                     ],
@@ -1317,11 +1496,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _activeMode = 'inspection';
-                        });
-                      },
+                      onTap: () => _switchMode('inspection'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
@@ -1360,11 +1535,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   const SizedBox(width: 4),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _activeMode = 'query';
-                        });
-                      },
+                      onTap: () => _switchMode('query'),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(

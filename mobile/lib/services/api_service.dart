@@ -147,4 +147,23 @@ class ApiService {
       throw Exception('Knowledge query failed: $errorMsg');
     }
   }
+
+  // 5. Generate TTS audio url for a given string
+  Future<String?> generateTTS(String text) async {
+    try {
+      final response = await _dio.post(
+        '/api/audio/tts',
+        data: {
+          'text': text,
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = response.data as Map<String, dynamic>;
+        return body['tts_audio_url'] as String?;
+      }
+    } catch (e) {
+      print('ApiService generateTTS error: $e');
+    }
+    return null;
+  }
 }
