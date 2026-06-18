@@ -24,34 +24,55 @@ It consists of three major components:
 
 ## 🏗️ System Architecture
 
-```mermaid
-graph TB
-    subgraph client_tier ["Client Tier (Flutter / PWA)"]
-        A_MIC[Microphone Input] --> A_Audio[Audio Capture Module]
-        A_Audio -->|Opus Encoding| A_Net{Network Check}
-        A_Net -->|Online| A_API[API Client REST/WS]
-        A_Net -->|Offline| A_DB[Local DB Store / SQLite]
-        A_DB -->|Background Sync| A_API
-        A_VUI[VUI Controller] -->|TTS & Sound Chimes| A_SPK[Device Speaker]
-        A_Dash[Supervisor Dashboard View]
-    end
-
-    subgraph application_tier ["Application Tier (Node.js Monolith)"]
-        A_API -->|POST /api/audio| B_Audio[Audio Ingestion Module]
-        A_API -->|WebSockets| B_Socket[Socket.io Manager]
-        B_Audio -->|Groq API| B_STT[Whisper STT Gateway]
-        B_Audio -->|RAG Processing| B_Vector[FAISS Vector Searcher]
-        B_Audio -->|Structured JSON Parsing| B_LLM[OpenRouter/Groq Gateway]
-    end
-
-    subgraph Data Tier
-        B_Vector -->|Vector Query| C_DB[(PostgreSQL + pgvector)]
-        B_LLM -->|Insert Work Order| C_DB
-        C_DB -->|Read Assets/History| B_Vector
-    end
-
-    B_Socket -->|Push Real-time Work Orders| A_Dash
 ```
+┌───────────────────────────────────────────────────────────────────────────────────────┐
+│                                    1. CLIENT TIER                                     │
+│                                                                                       │
+│   [Microphone Input]                                                                  │
+│           │                                                                           │
+│           ▼                                                                           │
+│   [Audio Capture Module] ───(Opus Encoding)───► [Network Check]                       │
+│                                                       │                               │
+│                                          ┌────────────┴────────────┐                  │
+│                                        Online                   Offline               │
+│                                          │                         │                  │
+│                                          ▼                         ▼                  │
+│   [Supervisor Dashboard] ◄───(WS)────┐ [API Client] ◄───(Sync)─── [Local DB]          │
+└──────────▲───────────────────────────┼──────────┬──────────────────────────────────────┘
+           │                           │          │
+           │ (WebSockets)              │ (REST)   │ (REST)
+           │                           │          │
+┌──────────┴───────────────────────────┼──────────▼──────────────────────────────────────┐
+│                                      │ 2. APPLICATION TIER                             │
+│                                      │                                                 │
+│   [Socket.io Manager] ───────────────┘       [Audio Ingestion Module]                  │
+│                                                         │                             │
+│                                      ┌──────────────────┼──────────────────┐          │
+│                                      │                  │                  │          │
+│                                      ▼                  ▼                  ▼          │
+│                               [Whisper STT]        [FAISS RAG]      [LLM Extractor]   │
+│                                (Groq API)       (Vector Searcher)  (OpenRouter/Groq)  │
+└─────────────────────────────────────────────────────────┬──────────────────┬──────────┘
+                                                          │                  │
+                                                          ▼                  ▼
+┌───────────────────────────────────────────────────────────────────────────────────────┐
+│                                    3. DATA TIER                                       │
+│                                                                                       │
+│                             [PostgreSQL Database + pgvector]                          │
+└───────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Component Flow Table
+
+| Component | Responsibility / Input | Technology | Target / Output |
+| :--- | :--- | :--- | :--- |
+| **Audio Capture** | Audio capture & Opus encoding | Web Audio API / Flutter Record | Compressed audio stream |
+| **Sync Manager** | Offline queueing & auto-sync | SQLite / IndexedDB | Chronological upload to server |
+| **API Backend** | Handles audio parsing & routing | Express.js / Node.js | Invokes AI orchestration |
+| **STT Gateway** | Audio transcription | Groq Whisper API | High-accuracy transcription |
+| **RAG Vector Search**| Similarity indexing & retrieval | FAISS Vector Store / pgvector | Contextual manual specifications |
+| **LLM Extractor** | Structured data extraction | Groq & OpenRouter | Validated JSON Work Order |
+| **Live Broadcast** | Socket streaming to dashboard | Socket.io / WebSockets | Real-time supervisor updates |
 
 ---
 
