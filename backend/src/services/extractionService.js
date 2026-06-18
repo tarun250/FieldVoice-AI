@@ -8,12 +8,14 @@ const ALLOWED_SEVERITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
  * Service to extract structured work order records from plain text transcripts
  */
 class ExtractionService {
+  
   /**
    * Extract fields from raw transcript
    * @param {string} transcript - Plain text transcription
    * @returns {Promise<object>} - Validated structured JSON schema
    */
-  async extract(transcript) {
+  async extract(transcript) 
+  {
     if (!transcript || typeof transcript !== 'string' || transcript.trim() === '') {
       throw new Error('Transcript input must be a non-empty string');
     }
@@ -38,7 +40,8 @@ class ExtractionService {
   /**
    * Fallback using Groq LLM Chat completion
    */
-  async _fallbackToGroq(systemPrompt, transcript) {
+  async _fallbackToGroq(systemPrompt, transcript) 
+  {
     try {
       const response = await groq.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
@@ -70,7 +73,8 @@ class ExtractionService {
     } catch (err) {
       console.error('Failed to parse JSON returned from LLM. Raw output was:', jsonString);
       // Fallback object if LLM output was completely un-parseable JSON
-      return {
+      return 
+      {
         equipment_id: null,
         location: null,
         fault_code: null,
