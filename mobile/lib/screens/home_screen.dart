@@ -1363,18 +1363,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       height: compact ? 185 : null,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _isRecording
-            ? Colors.red[50]
-            : (_isProcessing
-                ? Colors.blue[50]
-                : (_isBackgroundListening ? Colors.green[50] : Colors.white)),
+        color: _waitingForVoiceConfirmation
+            ? Colors.green[50]
+            : (_isRecording
+                ? Colors.red[50]
+                : (_isProcessing
+                    ? Colors.blue[50]
+                    : (_isBackgroundListening ? Colors.green[50] : Colors.white))),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: _isRecording
-              ? Colors.red[300]!
-              : (_isProcessing
-                  ? Colors.blue[300]!
-                  : (_isBackgroundListening ? Colors.green[300]! : Colors.blueGrey[200]!)),
+          color: _waitingForVoiceConfirmation
+              ? Colors.green[300]!
+              : (_isRecording
+                  ? Colors.red[300]!
+                  : (_isProcessing
+                      ? Colors.blue[300]!
+                      : (_isBackgroundListening ? Colors.green[300]! : Colors.blueGrey[200]!))),
           width: 2.5,
         ),
         boxShadow: [
@@ -1390,7 +1394,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Visual Indicator (Pulsing wave or progress loader or icons)
-          if (_isRecording)
+          if (_waitingForVoiceConfirmation || _isRecording)
             SizedBox(
               height: compact ? 40 : 60,
               child: AnimatedBuilder(
@@ -1407,7 +1411,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         width: 4,
                         height: (compact ? 24 : 40) * heightFactor,
                         decoration: BoxDecoration(
-                          color: Colors.red[600],
+                          color: _waitingForVoiceConfirmation ? Colors.green[600] : Colors.red[600],
                           borderRadius: BorderRadius.circular(2),
                         ),
                       );
@@ -1422,8 +1426,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               width: compact ? 40 : 60,
               child: const CircularProgressIndicator(color: Colors.blue, strokeWidth: 3),
             )
-          else if (_waitingForVoiceConfirmation)
-            Icon(Icons.record_voice_over, size: compact ? 32 : 48, color: Colors.green[600])
           else if (_isBackgroundListening)
             Icon(Icons.mic, size: compact ? 32 : 48, color: Colors.green[600])
           else
@@ -1433,34 +1435,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
           // Status & Info Text
           Text(
-            _isRecording
-                ? 'INSPECTION IN PROGRESS'
-                : (_isProcessing
-                    ? 'PROCESSING SPEECH...'
-                    : (_waitingForVoiceConfirmation
-                        ? 'WAITING FOR CONFIRMATION'
+            _waitingForVoiceConfirmation
+                ? 'WAITING FOR CONFIRMATION'
+                : (_isRecording
+                    ? 'INSPECTION IN PROGRESS'
+                    : (_isProcessing
+                        ? 'PROCESSING SPEECH...'
                         : (_isBackgroundListening ? 'ALWAYS LISTENING...' : 'SYSTEM READY'))),
             style: TextStyle(
               fontSize: compact ? 11 : 13,
               fontWeight: FontWeight.bold,
-              color: _isRecording
-                  ? Colors.red[700]
-                  : (_isProcessing
-                      ? Colors.blue[700]
-                      : (_waitingForVoiceConfirmation
-                          ? Colors.green[700]
+              color: _waitingForVoiceConfirmation
+                  ? Colors.green[700]
+                  : (_isRecording
+                      ? Colors.red[700]
+                      : (_isProcessing
+                          ? Colors.blue[700]
                           : (_isBackgroundListening ? Colors.green[800] : Colors.blueGrey[800]))),
               letterSpacing: 1.0,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            _isRecording
-                ? (_activeMode == 'inspection' ? 'Speak inspection details. Tap STOP when finished.' : 'Speak question. Tap STOP when finished.')
-                : (_isProcessing
-                    ? 'Transcribing and analyzing...'
-                    : (_waitingForVoiceConfirmation
-                        ? 'Tap CONFIRM or REJECT to submit or discard.'
+            _waitingForVoiceConfirmation
+                ? 'Say "confirm", "cancel", or state your changes.'
+                : (_isRecording
+                    ? (_activeMode == 'inspection' ? 'Speak inspection details. Tap STOP when finished.' : 'Speak question. Tap STOP when finished.')
+                    : (_isProcessing
+                        ? 'Transcribing and analyzing...'
                         : (_isBackgroundListening
                             ? (_activeMode == 'inspection'
                                 ? 'Say "start inspection" or tap START below.'
