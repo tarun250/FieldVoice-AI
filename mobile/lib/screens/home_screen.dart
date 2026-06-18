@@ -273,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         });
 
         _isCheckingRealtime = false;
-        _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
+        _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 3500), (timer) async {
           if (_isCheckingRealtime || !_isBackgroundListening || !_isOnline) return;
           _isCheckingRealtime = true;
 
@@ -292,15 +292,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               tempPath,
               'bg-${DateTime.now().millisecondsSinceEpoch}',
             );
-            final text = (res['text'] as String).toLowerCase();
-            print('Background checker transcript: $text');
+            final text = (res['text'] as String).toLowerCase().trim();
+            print('Background checker transcript: "$text"');
+
+            final bool matchesStart = text.contains('start') || 
+                                      text.contains('begin') || 
+                                      text.contains('inspect') || 
+                                      text.contains('launch') ||
+                                      text.contains('go');
 
             if (_activeMode == 'inspection') {
-              if (text.contains('start inspection') || text.contains('begin inspection')) {
+              if (matchesStart) {
                 _triggerStartInspection();
               }
             } else {
-              if (text.contains('start query') || text.contains('ask manual') || text.contains('ask query')) {
+              if (matchesStart || text.contains('query') || text.contains('ask')) {
                 _triggerStartInspection();
               }
             }
@@ -343,17 +349,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _statusMessage = _activeMode == 'inspection' ? 'Starting inspection...' : 'Starting query...';
     });
 
-    // Play synthesized start speech
-    try {
-      final textToSpeak = _activeMode == 'inspection' ? 'inspection started' : 'query started';
-      final ttsUrl = await _apiService.generateTTS(textToSpeak);
-      if (ttsUrl != null) {
-        final fullUrl = '${AppConstants.backendUrl}$ttsUrl';
-        print('Playing start TTS: $fullUrl');
-        await _audioService.playUrl(fullUrl);
+    // Play synthesized start speech if in hands-free mode
+    if (_isHandsFreeMode) {
+      try {
+        final textToSpeak = _activeMode == 'inspection' ? 'inspection started' : 'query started';
+        final ttsUrl = await _apiService.generateTTS(textToSpeak);
+        if (ttsUrl != null) {
+          final fullUrl = '${AppConstants.backendUrl}$ttsUrl';
+          print('Playing start TTS: $fullUrl');
+          await _audioService.playUrl(fullUrl);
+        }
+      } catch (e) {
+        print('Failed to play start speech: $e');
       }
-    } catch (e) {
-      print('Failed to play start speech: $e');
     }
 
     if (!mounted) {
@@ -387,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         if (_isHandsFreeMode) {
           _isCheckingRealtime = false;
-          _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
+          _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 3500), (timer) async {
             if (_isCheckingRealtime || !_isRecording || !_isOnline) return;
             _isCheckingRealtime = true;
 
@@ -415,17 +423,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 tempPath,
                 'realtime-${DateTime.now().millisecondsSinceEpoch}',
               );
-              final text = (res['text'] as String).toLowerCase();
-              print('Recording checker transcript: $text');
+              final text = (res['text'] as String).toLowerCase().trim();
+              print('Recording checker transcript: "$text"');
 
-              if (_activeMode == 'inspection') {
-                if (text.contains('stop inspection') || text.contains('stop recording') || text.contains('finish inspection')) {
-                  _triggerStopInspection();
-                }
-              } else {
-                if (text.contains('stop query') || text.contains('stop recording') || text.contains('finish query')) {
-                  _triggerStopInspection();
-                }
+              final bool matchesStop = text.contains('stop') || 
+                                       text.contains('finish') || 
+                                       text.contains('done') || 
+                                       text.contains('complete') || 
+                                       text.contains('end') ||
+                                       text.contains('record');
+
+              if (matchesStop) {
+                _triggerStopInspection();
               }
             } catch (e) {
               print('Error in recording check: $e');
@@ -471,17 +480,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _statusMessage = _activeMode == 'inspection' ? 'Stopping inspection...' : 'Stopping query...';
     });
 
-    // Play synthesized stop speech
-    try {
-      final textToSpeak = _activeMode == 'inspection' ? 'inspection stopped' : 'query stopped';
-      final ttsUrl = await _apiService.generateTTS(textToSpeak);
-      if (ttsUrl != null) {
-        final fullUrl = '${AppConstants.backendUrl}$ttsUrl';
-        print('Playing stop TTS: $fullUrl');
-        await _audioService.playUrl(fullUrl);
+    // Play synthesized stop speech if in hands-free mode
+    if (_isHandsFreeMode) {
+      try {
+        final textToSpeak = _activeMode == 'inspection' ? 'inspection stopped' : 'query stopped';
+        final ttsUrl = await _apiService.generateTTS(textToSpeak);
+        if (ttsUrl != null) {
+          final fullUrl = '${AppConstants.backendUrl}$ttsUrl';
+          print('Playing stop TTS: $fullUrl');
+          await _audioService.playUrl(fullUrl);
+        }
+      } catch (e) {
+        print('Failed to play stop speech: $e');
       }
-    } catch (e) {
-      print('Failed to play stop speech: $e');
     }
 
     final finalBytes = _audioBytesBuilder.toBytes();
@@ -542,27 +553,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _currentAudioStorageUrl = sttResult['file']['storage_path'] as String?;
           _waitingForVoiceConfirmation = true;
           _isProcessing = false;
-          _statusMessage = 'Reviewing report... Playing readback.';
+          _statusMessage = _isHandsFreeMode 
+              ? 'Reviewing report... Playing readback.' 
+              : 'Reviewing report... Tap CONFIRM or REJECT to submit.';
         });
 
-        final ttsAudioUrl = extractResult['tts_audio_url'] as String?;
-        if (ttsAudioUrl != null) {
-          final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
-          print('Playing confirmation TTS from URL: $fullUrl');
-          await _audioService.playUrl(fullUrl);
-        }
-
         if (_isHandsFreeMode) {
+          final ttsAudioUrl = extractResult['tts_audio_url'] as String?;
+          if (ttsAudioUrl != null) {
+            final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
+            print('Playing confirmation TTS from URL: $fullUrl');
+            await _audioService.playUrl(fullUrl);
+          }
           _startVoiceConfirmationListener();
-        } else {
-          setState(() {
-            _statusMessage = 'Reviewing report... Tap CONFIRM or REJECT to submit.';
-          });
         }
       } else {
         final queryResult = await _apiService.queryKnowledgeBase(transcriptText);
         final answer = queryResult['resolved_answer'] ?? queryResult['answer'] ?? '';
-        final ttsAudioUrl = queryResult['tts_audio_url'] as String?;
 
         setState(() {
           _ragResponse = answer;
@@ -570,13 +577,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _statusMessage = 'Query answered. Review response.';
         });
 
-        if (ttsAudioUrl != null) {
-          final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
-          print('Playing query answer TTS from URL: $fullUrl');
-          await _audioService.playUrl(fullUrl);
+        if (_isHandsFreeMode) {
+          final ttsAudioUrl = queryResult['tts_audio_url'] as String?;
+          if (ttsAudioUrl != null) {
+            final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
+            print('Playing query answer TTS from URL: $fullUrl');
+            await _audioService.playUrl(fullUrl);
+          }
+          _startAlwaysListening();
         }
-        
-        _startAlwaysListening();
       }
     } catch (e) {
       setState(() {
@@ -604,17 +613,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     
     _realtimeCheckTimer?.cancel();
     _realtimeCheckTimer = null;
+    _confirmationTimer?.cancel();
+    _confirmationTimer = null;
     await _audioStreamSubscription?.cancel();
     _audioStreamSubscription = null;
     await _audioService.stopRecording();
     
     setState(() {
-      _statusMessage = 'Listening for confirmation...';
+      _statusMessage = 'Listening for confirmation or changes...';
       _isRecording = true;
     });
 
     _pulseController.repeat(reverse: true);
     _audioBytesBuilder.clear();
+
+    int tickCount = 0;
+    String lastTranscript = '';
 
     try {
       final stream = await _audioService.startStream();
@@ -635,40 +649,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               return;
             }
 
-            final int chunkLength = 16000 * 2 * 5;
-            final Uint8List checkBytes;
-            if (pcmBytes.length <= chunkLength) {
-              checkBytes = pcmBytes;
-            } else {
-              checkBytes = Uint8List.sublistView(pcmBytes, pcmBytes.length - chunkLength);
-            }
-
             final tempDir = await getTemporaryDirectory();
             final tempPath = '${tempDir.path}/realtime_confirmation_chunk.wav';
-            await _audioService.savePcmToWav(checkBytes, tempPath);
+            await _audioService.savePcmToWav(pcmBytes, tempPath);
 
             final res = await _apiService.transcribeAudio(
               tempPath,
               'realtime-confirm-${DateTime.now().millisecondsSinceEpoch}',
             );
-            final text = (res['text'] as String).toLowerCase();
-            print('Confirmation voice check: $text');
+            final text = (res['text'] as String).toLowerCase().trim();
+            print('Confirmation voice check (transcript): "$text"');
 
             final bool isConfirm = text.contains('confirm') ||
                                   text.contains('yes') ||
                                   text.contains('yeah') ||
                                   text.contains('ok') ||
                                   text.contains('submit') ||
-                                  text.contains('approved');
+                                  text.contains('approved') ||
+                                  text.contains('accept') ||
+                                  text.contains('correct');
 
             final bool isCancel = text.contains('cancel') ||
                                  text.contains('reject') ||
                                  text.contains('no') ||
                                  text.contains('try again') ||
-                                 text.contains('reset');
+                                 text.contains('reset') ||
+                                 text.contains('discard');
 
             if (isConfirm || isCancel) {
-              _realtimeCheckTimer?.cancel();
+              timer.cancel();
               _realtimeCheckTimer = null;
               await _audioStreamSubscription?.cancel();
               _audioStreamSubscription = null;
@@ -679,6 +688,42 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               });
 
               _processVoiceConfirmation(isConfirm, isCancel);
+              return;
+            }
+
+            // Check for change requests. Wait for user to stop speaking (stabilized transcript)
+            if (text.isNotEmpty && text.length > 2) {
+              if (text == lastTranscript) {
+                // The transcript stabilized, user is done speaking changes!
+                timer.cancel();
+                _realtimeCheckTimer = null;
+                await _audioStreamSubscription?.cancel();
+                _audioStreamSubscription = null;
+                await _audioService.stopRecording();
+
+                setState(() {
+                  _isRecording = false;
+                });
+
+                _applyVoiceChangeRequest(text);
+                return;
+              } else {
+                lastTranscript = text;
+              }
+            }
+
+            tickCount++;
+            if (tickCount >= 4) {
+              // 10 seconds of listening finished with no inputs
+              timer.cancel();
+              _realtimeCheckTimer = null;
+              await _audioStreamSubscription?.cancel();
+              _audioStreamSubscription = null;
+              await _audioService.stopRecording();
+
+              // Restart the listener with a clean recording buffer
+              _startVoiceConfirmationListener(resetTimer: false);
+              return;
             }
           } catch (e) {
             print('Error in voice confirmation check: $e');
@@ -689,28 +734,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       }
     } catch (e) {
       print('Voice confirmation listener failed: $e');
-    }
-
-    if (resetTimer) {
-      _confirmationTimer?.cancel();
-      _confirmationTimer = Timer(const Duration(seconds: 30), () async {
-        if (_waitingForVoiceConfirmation) {
-          _realtimeCheckTimer?.cancel();
-          _realtimeCheckTimer = null;
-          await _audioStreamSubscription?.cancel();
-          _audioStreamSubscription = null;
-          await _audioService.stopRecording();
-          _pulseController.stop();
-          _pulseController.reset();
-
-          setState(() {
-            _waitingForVoiceConfirmation = false;
-            _isRecording = false;
-            _statusMessage = 'Confirmation timed out. Submit manually.';
-          });
-          _startAlwaysListening();
-        }
-      });
     }
   }
 
@@ -760,6 +783,48 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         SnackBar(content: Text('Voice Confirmation failed: ${e.toString()}. Please tap buttons manually.')),
       );
       _startAlwaysListening();
+    }
+  }
+
+  Future<void> _applyVoiceChangeRequest(String changeRequest) async {
+    if (!mounted || !_waitingForVoiceConfirmation) return;
+
+    _pulseController.stop();
+    _pulseController.reset();
+
+    setState(() {
+      _isRecording = false;
+      _isProcessing = true;
+      _statusMessage = 'Applying changes: "$changeRequest"...';
+    });
+
+    try {
+      final updatedData = await _apiService.updateExtraction(
+        currentData: _extractedData!,
+        changeRequest: changeRequest,
+      );
+
+      setState(() {
+        _extractedData = updatedData;
+        _isProcessing = false;
+        _statusMessage = 'Updated report. Playing readout...';
+      });
+
+      final ttsAudioUrl = updatedData['tts_audio_url'] as String?;
+      if (ttsAudioUrl != null) {
+        final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
+        print('Playing updated confirmation TTS from URL: $fullUrl');
+        await _audioService.playUrl(fullUrl);
+      }
+
+      _startVoiceConfirmationListener(resetTimer: true);
+    } catch (e) {
+      print('Failed to apply changes: $e');
+      setState(() {
+        _isProcessing = false;
+        _statusMessage = 'Failed to apply changes. Try again.';
+      });
+      _startVoiceConfirmationListener(resetTimer: true);
     }
   }
 

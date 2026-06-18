@@ -166,4 +166,33 @@ class ApiService {
     }
     return null;
   }
+
+  // 6. Update structured extraction data with natural language corrections
+  Future<Map<String, dynamic>> updateExtraction({
+    required Map<String, dynamic> currentData,
+    required String changeRequest,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/extraction/update',
+        data: {
+          'current_data': currentData,
+          'change_request': changeRequest,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final body = response.data as Map<String, dynamic>;
+        if (body.containsKey('data') && body['data'] is Map<String, dynamic>) {
+          return body['data'] as Map<String, dynamic>;
+        }
+        return body;
+      } else {
+        throw Exception('Update status error: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      final errorMsg = e.response?.data?['message'] ?? e.message;
+      throw Exception('Update extraction failed: $errorMsg');
+    }
+  }
 }

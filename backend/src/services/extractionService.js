@@ -127,6 +127,44 @@ class ExtractionService {
       exception_flag: exceptionFlag
     };
   }
+
+  /**
+   * Update current structured data based on a change request transcript
+   * @param {object} currentData - The current structured JSON fields
+   * @param {string} changeRequest - The plain text change request (e.g. "change severity to critical")
+   * @returns {Promise<object>} - The updated structured JSON object
+   */
+  async update(currentData, changeRequest) {
+    if (!currentData || typeof currentData !== 'object') {
+      throw new Error('Current data must be an object');
+    }
+    if (!changeRequest || typeof changeRequest !== 'string' || changeRequest.trim() === '') {
+      throw new Error('Change request must be a non-empty string');
+    }
+
+    const systemPrompt = 
+      "You are an expert industrial system parser. You are given:\n" +
+      "1. A JSON object representing the current extracted fields of a work order.\n" +
+      "2. A user correction/change request instruction (e.g., \"change equipment to P-101\", \"add seal kit to parts\", \"severity is low\").\n" +
+      "Your task is to apply the requested changes to the JSON object and return the updated JSON object.\n" +
+      "You must output ONLY a valid JSON object. Do not include markdown code block syntax (like ```json), commentary, or extra text.\n" +
+      "The JSON object must contain the following keys exactly:\n" +
+      "1. \"equipment_id\": String (or null)\n" +
+      "2. \"location\": String (or null)\n" +
+      "3. \"fault_code\": String (or null)\n" +
+      "4. \"severity\": String (Must be exactly one of: \"LOW\", \"MEDIUM\", \"HIGH\", \"CRITICAL\")\n" +
+      "5. \"action_taken\": String (or null)\n" +
+      "6. \"parts_required\": Array of strings\n" +
+      "7. \"confidence_score\": Float (confidence score between 0.00 and 1.00)";
+
+    const userPrompt = 
+      `Current Data: ${JSON.stringify(currentData)}\n` +
+      `Change Request: "${changeRequest}"`;
+
+    const jsonString = await this._fallbackToGroq(systemPrompt, userPrompt);
+
+    return this._parseAndValidate(jsonString, changeRequest);
+  }
 }
 
 module.exports = new ExtractionService();

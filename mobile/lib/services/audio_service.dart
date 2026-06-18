@@ -80,6 +80,9 @@ class AudioService {
       if (await File(filePath).exists()) {
         await _player.setFilePath(filePath);
         await _player.play();
+        await _player.processingStateStream.firstWhere(
+          (state) => state == ProcessingState.completed || state == ProcessingState.idle
+        );
       } else {
         print('AudioService Play Error: File does not exist at $filePath');
       }
@@ -93,6 +96,9 @@ class AudioService {
     try {
       await _player.setUrl(url);
       await _player.play();
+      await _player.processingStateStream.firstWhere(
+        (state) => state == ProcessingState.completed || state == ProcessingState.idle
+      );
     } catch (e) {
       print('AudioService Play Url Error: $e');
     }

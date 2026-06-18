@@ -28,7 +28,7 @@ class TTSService {
         body: JSON.stringify({
           model: 'canopylabs/orpheus-v1-english',
           input: text,
-          voice: 'autumn',
+          voice: 'hannah',
           response_format: 'wav',
         }),
       });
