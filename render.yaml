@@ -10,6 +10,8 @@ services:
         value: 3000
       - key: GROQ_API_KEY
         sync: false # Render will prompt you to input this securely on deployment
+      - key: GROQ_API_KEY_2
+        sync: false # Render will prompt you to input this securely on deployment
       - key: OPENROUTER_API_KEY
         sync: false # Render will prompt you to input this securely on deployment
       - key: PGHOST
