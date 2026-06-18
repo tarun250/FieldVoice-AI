@@ -9,7 +9,7 @@ It is structured as a robust **monorepo** consisting of:
 
 ---
 
-## 🚀 Key Capabilities & Innovations
+## 🚀 Key Capabilities & core  Innovations
 
 *   **Hands-Free Voice Confirmation & Loop**: Technicians speak inspection logs, hear a synthesized readback of parsed data, and can state natural language modifications (e.g., *"change severity to critical"*) or verify verbally (*"confirm"* / *"cancel"*), entirely screen-free.
 *   **API Key Rotation & Failover**: Active-passive failover between primary (`GROQ_API_KEY`) and secondary (`GROQ_API_KEY_2`) keys on backend text-to-speech requests to prevent rate limit (TPD) exhaustion.
@@ -356,7 +356,7 @@ fieldvoice-ai/
 
 ## 🛠️ Installation & Setup Instructions
 
-### Prerequisites
+###  System Prerequisites
 *   **Node.js**: v18.0.0 or higher
 *   **Flutter SDK**: v3.19.0 or higher
 *   **PostgreSQL**: v14.0 or higher (with `pgvector` enabled)
@@ -372,7 +372,7 @@ CREATE DATABASE fieldvoice;
 
 ---
 
-### 2. Backend Service Setup
+### 2. Backend Service Configuration
 1.  Navigate to the backend directory and install dependencies:
     ```bash
     cd backend
