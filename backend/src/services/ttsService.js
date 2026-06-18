@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 class TTSService {
   /**
@@ -13,6 +14,46 @@ class TTSService {
     }
 
     try {
+      const voice = 'hannah';
+      const normalizedText = text.trim().toLowerCase().replace(/[.,!?]/g, '');
+
+      // List of static template messages that should be cached
+      const CACHEABLE_MESSAGES = [
+        'inspection started',
+        'query started',
+        'inspection stopped',
+        'query stopped',
+        'work order created successfully',
+        'report rejected'
+      ];
+
+      const shouldCache = CACHEABLE_MESSAGES.includes(normalizedText);
+      const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      let filename;
+      let outputPath;
+
+      if (shouldCache) {
+        const hash = crypto.createHash('md5').update(`${normalizedText}_${voice}`).digest('hex');
+        filename = `cached-speech-${hash}.wav`;
+        outputPath = path.join(uploadsDir, filename);
+
+        // Check if cache file exists
+        if (fs.existsSync(outputPath)) {
+          console.log(`TTS Cache HIT for static prompt: "${text}"`);
+          return `/uploads/${filename}`;
+        }
+        console.log(`TTS Cache MISS for static prompt: "${text}" — calling Groq API`);
+      } else {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        filename = `speech-${uniqueSuffix}.wav`;
+        outputPath = path.join(uploadsDir, filename);
+        console.log(`TTS Request (Dynamic): "${text}" — calling Groq API`);
+      }
+
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) {
         throw new Error('GROQ_API_KEY environment variable is not defined.');
@@ -28,7 +69,7 @@ class TTSService {
         body: JSON.stringify({
           model: 'canopylabs/orpheus-v1-english',
           input: text,
-          voice: 'hannah',
+          voice: voice,
           response_format: 'wav',
         }),
       });
@@ -42,16 +83,6 @@ class TTSService {
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Save file inside standard uploads directory
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const filename = `speech-${uniqueSuffix}.wav`;
-      const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
-      
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-
-      const outputPath = path.join(uploadsDir, filename);
       fs.writeFileSync(outputPath, buffer);
 
       return `/uploads/${filename}`;
