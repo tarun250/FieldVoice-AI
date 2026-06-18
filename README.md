@@ -26,7 +26,7 @@ It consists of three major components:
 
 ```mermaid
 graph TB
-    subgraph Client Tier (Flutter / PWA)
+    subgraph client_tier ["Client Tier (Flutter / PWA)"]
         A_MIC[Microphone Input] --> A_Audio[Audio Capture Module]
         A_Audio -->|Opus Encoding| A_Net{Network Check}
         A_Net -->|Online| A_API[API Client REST/WS]
@@ -36,7 +36,7 @@ graph TB
         A_Dash[Supervisor Dashboard View]
     end
 
-    subgraph Application Tier (Node.js Monolith)
+    subgraph application_tier ["Application Tier (Node.js Monolith)"]
         A_API -->|POST /api/audio| B_Audio[Audio Ingestion Module]
         A_API -->|WebSockets| B_Socket[Socket.io Manager]
         B_Audio -->|Groq API| B_STT[Whisper STT Gateway]
