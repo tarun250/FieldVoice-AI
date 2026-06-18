@@ -2,7 +2,7 @@
 class AppConstants {
   // Update this to your local machine's IP (e.g., http://192.168.1.100:3000) 
   // or your hosted backend/tunnel URL to let a physical Android phone connect.
-  static const String backendUrl = 'http://127.0.0.1:3000';
+  static const String backendUrl = 'https://fieldvoice-ai.onrender.com';
 
   // Hardcoded technician credentials per assignment specification
   static const String workerUuid = 'd3b0c442-98fc-1111-b303-0242ac120003';
