@@ -635,36 +635,6 @@ export default function SupervisorDashboard() {
                       </div>
                     )}
 
-                    {/* Confidence Progress bar */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="text-[9px] font-bold text-slate-455 uppercase tracking-wider">Speech Confidence</span>
-                        <span className={cn(
-                          "font-bold text-[10px]",
-                          selectedWorkOrder.confidence_score >= 0.85 
-                            ? "text-emerald-600" 
-                            : selectedWorkOrder.confidence_score >= 0.7 
-                              ? "text-amber-600" 
-                              : "text-red-600"
-                        )}>
-                          {Math.round(selectedWorkOrder.confidence_score * 100)}%
-                        </span>
-                      </div>
-                      <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all duration-300",
-                            selectedWorkOrder.confidence_score >= 0.85 
-                              ? "bg-emerald-600" 
-                              : selectedWorkOrder.confidence_score >= 0.70 
-                                ? "bg-amber-600" 
-                                : "bg-red-650"
-                          )}
-                          style={{ width: `${selectedWorkOrder.confidence_score * 100}%` }}
-                        />
-                      </div>
-                    </div>
-
                     {/* Exception Box warning banner */}
                     {selectedWorkOrder.exception_flag && (
                       <Alert variant="destructive" className="p-2.5">
