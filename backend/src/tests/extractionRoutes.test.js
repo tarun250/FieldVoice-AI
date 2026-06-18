@@ -65,6 +65,9 @@ describe('Structured Extraction Routes Integration Tests', () => {
       expect(response.status).toBe(500);
       expect(response.body.error_code).toBe('EXTRACTION_FAILED');
       expect(response.body.details).toBe('LLM rate limit reached');
+      
     });
+    
   });
+  
 });
