@@ -139,21 +139,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     
     _localSpeechResult = '';
     
-    final path = await _audioService.startRecording();
-    if (path != null) {
+    // Check permission first
+    final hasPerm = await _audioService.checkPermission();
+    if (!hasPerm) {
       setState(() {
-        _waitingForVoiceConfirmation = false;
-        _isRecording = true;
-        _recordedFilePath = path;
-        _statusMessage = 'Recording audio... Speak clearly.';
-        _rawTranscript = null;
-        _extractedData = null;
-        _ragResponse = null;
-        _currentAudioStorageUrl = null;
+        _statusMessage = 'Microphone permission denied.';
       });
-      _pulseController.repeat(reverse: true);
+      return;
+    }
 
-      if (_speechEnabled) {
+    setState(() {
+      _waitingForVoiceConfirmation = false;
+      _isRecording = true;
+      _statusMessage = 'Recording audio... Speak clearly.';
+      _rawTranscript = null;
+      _extractedData = null;
+      _ragResponse = null;
+      _currentAudioStorageUrl = null;
+    });
+    _pulseController.repeat(reverse: true);
+
+    // Try initializing again if it wasn't enabled in initState
+    if (!_speechEnabled) {
+      await _initSpeech();
+    }
+
+    // Start speech recognition first
+    if (_speechEnabled) {
+      try {
         await _speechToText.listen(
           onResult: (result) {
             setState(() {
@@ -170,7 +183,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             partialResults: true,
           ),
         );
+      } catch (e) {
+        print('SpeechToText listen failed: $e');
       }
+    }
+
+    // Start raw audio recording second
+    final path = await _audioService.startRecording();
+    if (path != null) {
+      setState(() {
+        _recordedFilePath = path;
+      });
     }
   }
 
@@ -273,6 +296,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void _cancelConfirmationRecording() {
     _confirmationTimer?.cancel();
     _confirmationTimer = null;
+    if (_speechToText.isListening) {
+      _speechToText.stop();
+    }
   }
 
   Future<void> _startVoiceConfirmationListener() async {
@@ -287,39 +313,80 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
     
     setState(() {
-      _statusMessage = 'Listening for confirmation...';
+      _statusMessage = 'Listening for confirmation (15s)...';
       _isRecording = true;
       _localSpeechResult = '';
     });
 
     _pulseController.repeat(reverse: true);
 
-    if (_speechEnabled) {
-      await _speechToText.listen(
-        onResult: (result) {
-          setState(() {
-            _localSpeechResult = result.recognizedWords;
-            if (result.recognizedWords.trim().isNotEmpty) {
-              _statusMessage = 'Heard: "${result.recognizedWords}"';
-            }
-          });
-        },
-        listenFor: const Duration(seconds: 4),
-        pauseFor: const Duration(seconds: 3),
-        listenOptions: stt.SpeechListenOptions(
-          cancelOnError: true,
-          partialResults: true,
-        ),
-      );
+    // Try initializing again if it wasn't enabled
+    if (!_speechEnabled) {
+      await _initSpeech();
     }
 
-    // Process confirmation after 3 seconds automatically
-    _confirmationTimer = Timer(const Duration(seconds: 3), () async {
-      await _stopRecordingAndProcessConfirmation();
+    if (_speechEnabled) {
+      try {
+        await _speechToText.listen(
+          onResult: (result) {
+            final words = result.recognizedWords.toLowerCase();
+            setState(() {
+              _localSpeechResult = result.recognizedWords;
+              _statusMessage = 'Heard: "${result.recognizedWords}"';
+            });
+
+            // Check keywords in real-time
+            final bool isConfirm = words.contains('confirm') ||
+                                  words.contains('yes') ||
+                                  words.contains('yeah') ||
+                                  words.contains('ok') ||
+                                  words.contains('submit') ||
+                                  words.contains('approved');
+
+            final bool isCancel = words.contains('cancel') ||
+                                 words.contains('reject') ||
+                                 words.contains('no') ||
+                                 words.contains('try again') ||
+                                 words.contains('reset');
+
+            if (isConfirm || isCancel) {
+              _cancelConfirmationRecording();
+              _processVoiceConfirmation(isConfirm, isCancel);
+            }
+          },
+          listenFor: const Duration(seconds: 15),
+          pauseFor: const Duration(seconds: 10),
+          listenOptions: stt.SpeechListenOptions(
+            cancelOnError: false, // Keep listening on silence/errors
+            partialResults: true,
+          ),
+        );
+      } catch (e) {
+        print('SpeechToText listen confirmation failed: $e');
+      }
+    }
+
+    // Stop listening and timeout after 15 seconds automatically
+    _confirmationTimer = Timer(const Duration(seconds: 15), () async {
+      if (_waitingForVoiceConfirmation) {
+        if (_speechToText.isListening) {
+          await _speechToText.stop();
+        }
+        _pulseController.stop();
+        _pulseController.reset();
+
+        setState(() {
+          _waitingForVoiceConfirmation = false;
+          _isRecording = false;
+          _statusMessage = 'Confirmation timed out. Submit manually.';
+        });
+
+        await _ttsService.speak('Confirmation timed out. Please tap confirm or cancel.');
+      }
     });
   }
 
-  Future<void> _stopRecordingAndProcessConfirmation() async {
+  Future<void> _processVoiceConfirmation(bool isConfirm, bool isCancel) async {
     if (!mounted || !_waitingForVoiceConfirmation) return;
 
     _pulseController.stop();
@@ -336,24 +403,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
 
     try {
-      final transcriptText = _localSpeechResult.toLowerCase().trim();
-      print('Confirmation Transcript: "$transcriptText"');
-
-      // Check keywords
-      final bool isConfirm = transcriptText.contains('confirm') ||
-                            transcriptText.contains('yes') ||
-                            transcriptText.contains('yeah') ||
-                            transcriptText.contains('ok') ||
-                            transcriptText.contains('submit') ||
-                            transcriptText.contains('approved');
-
-      final bool isCancel = transcriptText.contains('cancel') ||
-                           transcriptText.contains('reject') ||
-                           transcriptText.contains('no') ||
-                           transcriptText.contains('record') ||
-                           transcriptText.contains('try again') ||
-                           transcriptText.contains('reset');
-
       if (isConfirm) {
         await _executeSubmitWorkOrder();
       } else if (isCancel) {
@@ -365,13 +414,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _statusMessage = 'Report rejected. Hold button to record again.';
         });
         await _ttsService.speak('Cancelled.');
-      } else {
-        // Did not understand
-        setState(() {
-          _isProcessing = false;
-          _statusMessage = 'Did not recognize command. Try again...';
-        });
-        await _ttsService.speak('Sorry, I did not catch that. Please say confirm or cancel.');
       }
     } catch (e) {
       setState(() {
