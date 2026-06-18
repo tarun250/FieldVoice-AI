@@ -21,6 +21,6 @@ services:
       - key: PGDATABASE
         value: postgres
       - key: PGPASSWORD
-        value: Supabase123%
+        sync: false # Render will prompt you to input this securely on deployment
       - key: PGSSL
         value: "true"
