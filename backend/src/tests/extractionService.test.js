@@ -1,5 +1,4 @@
 const extractionService = require('../services/extractionService');
-const openrouterConfig = require('../config/openrouter');
 const groqMock = require('../config/groq');
 
 // Mock Groq configuration
@@ -14,22 +13,11 @@ jest.mock('../config/groq', () => {
 });
 
 describe('Structured Extraction Service Unit Tests', () => {
-  let originalFetch;
-
-  beforeAll(() => {
-    originalFetch = global.fetch;
-  });
-
-  afterAll(() => {
-    global.fetch = originalFetch;
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
-    openrouterConfig.apiKey = 'mock-openrouter-key';
   });
 
-  test('Should extract fields correctly on successful OpenRouter response', async () => {
+  test('Should extract fields correctly on successful Groq response', async () => {
     const mockOutput = {
       equipment_id: 'P-101',
       location: 'Basement Sump',
@@ -40,17 +28,14 @@ describe('Structured Extraction Service Unit Tests', () => {
       confidence_score: 0.92
     };
 
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        choices: [
-          {
-            message: {
-              content: JSON.stringify(mockOutput)
-            }
+    groqMock.chat.completions.create.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify(mockOutput)
           }
-        ]
-      })
+        }
+      ]
     });
 
     const result = await extractionService.extract('Pump P-101 in Basement Sump has a major oil leak. I closed the valves.');
@@ -59,7 +44,7 @@ describe('Structured Extraction Service Unit Tests', () => {
     expect(result.location).toBe('Basement Sump');
     expect(result.severity).toBe('HIGH');
     expect(result.exception_flag).toBe(false);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(groqMock.chat.completions.create).toHaveBeenCalledTimes(1);
   });
 
   test('Should handle invalid severity enums and default to MEDIUM', async () => {
@@ -73,17 +58,14 @@ describe('Structured Extraction Service Unit Tests', () => {
       confidence_score: 0.85
     };
 
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        choices: [
-          {
-            message: {
-              content: JSON.stringify(mockOutput)
-            }
+    groqMock.chat.completions.create.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify(mockOutput)
           }
-        ]
-      })
+        }
+      ]
     });
 
     const result = await extractionService.extract('Turbine T-402 has high vibration.');
@@ -103,36 +85,6 @@ describe('Structured Extraction Service Unit Tests', () => {
       confidence_score: 0.55 // Low confidence
     };
 
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        choices: [{ message: { content: JSON.stringify(mockOutput) } }]
-      })
-    });
-
-    const result = await extractionService.extract('Something is hot on generator 501.');
-
-    expect(result.exception_flag).toBe(true);
-  });
-
-  test('Should fallback to Groq Llama 3 if OpenRouter API call fails', async () => {
-    // Force OpenRouter fetch to fail
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: false,
-      status: 500
-    });
-
-    // Mock successful Groq fallback response
-    const mockOutput = {
-      equipment_id: 'V-99',
-      location: 'Valve Pit 4',
-      fault_code: 'F-ELEC-SHORT',
-      severity: 'CRITICAL',
-      action_taken: 'Isolated power breaker',
-      parts_required: ['Fuse'],
-      confidence_score: 0.95
-    };
-
     groqMock.chat.completions.create.mockResolvedValue({
       choices: [
         {
@@ -143,11 +95,8 @@ describe('Structured Extraction Service Unit Tests', () => {
       ]
     });
 
-    const result = await extractionService.extract('Valve V-99 is short-circuited.');
+    const result = await extractionService.extract('Something is hot on generator 501.');
 
-    expect(result.equipment_id).toBe('V-99');
-    expect(result.severity).toBe('CRITICAL');
-    expect(result.exception_flag).toBe(false);
-    expect(groqMock.chat.completions.create).toHaveBeenCalledTimes(1);
+    expect(result.exception_flag).toBe(true);
   });
 });

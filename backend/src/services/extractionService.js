@@ -30,43 +30,7 @@ class ExtractionService {
       "6. \"parts_required\": Array of strings. List of replacement parts required (e.g., [\"Flange Gasket\", \"Seal Kit\"]). If none required, return an empty array [].\n" +
       "7. \"confidence_score\": Float. Rate your confidence in this extraction between 0.00 and 1.00 based on the clarity and completeness of the input.";
 
-    let jsonString = '';
-
-    // Check if OpenRouter API Key is available
-    if (openrouterConfig.apiKey) {
-      try {
-        const response = await fetch(`${openrouterConfig.baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openrouterConfig.apiKey}`,
-            'HTTP-Referer': openrouterConfig.referer,
-            'X-Title': openrouterConfig.title
-          },
-          body: JSON.stringify({
-            model: openrouterConfig.model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: transcript }
-            ],
-            temperature: 0.0 // Low temperature for high factual accuracy
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`OpenRouter API responded with status ${response.status}`);
-        }
-
-        const data = await response.json();
-        jsonString = data.choices[0]?.message?.content || '';
-      } catch (err) {
-        console.warn('OpenRouter API request failed, trying Groq fallback...', err.message);
-        jsonString = await this._fallbackToGroq(systemPrompt, transcript);
-      }
-    } else {
-      // Direct fallback to Groq Llama 3 if OpenRouter Key is missing
-      jsonString = await this._fallbackToGroq(systemPrompt, transcript);
-    }
+    const jsonString = await this._fallbackToGroq(systemPrompt, transcript);
 
     return this._parseAndValidate(jsonString, transcript);
   }

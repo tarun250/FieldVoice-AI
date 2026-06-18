@@ -50,42 +50,7 @@ class QueryService {
 
     const userPrompt = `Context:\n${contextText}\n\nQuestion: ${queryText}`;
 
-    let answer = '';
-
-    // Invoke OpenRouter with Llama/Nemotron free model
-    if (openrouterConfig.apiKey) {
-      try {
-        const response = await fetch(`${openrouterConfig.baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openrouterConfig.apiKey}`,
-            'HTTP-Referer': openrouterConfig.referer,
-            'X-Title': openrouterConfig.title
-          },
-          body: JSON.stringify({
-            model: openrouterConfig.model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            temperature: 0.0 // Factual accuracy
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`OpenRouter API responded with status ${response.status}`);
-        }
-
-        const data = await response.json();
-        answer = data.choices[0]?.message?.content || '';
-      } catch (err) {
-        console.warn('OpenRouter query request failed, trying Groq fallback...', err.message);
-        answer = await this._fallbackToGroq(systemPrompt, userPrompt);
-      }
-    } else {
-      answer = await this._fallbackToGroq(systemPrompt, userPrompt);
-    }
+    const answer = await this._fallbackToGroq(systemPrompt, userPrompt);
 
     return {
       answer: answer.trim(),
