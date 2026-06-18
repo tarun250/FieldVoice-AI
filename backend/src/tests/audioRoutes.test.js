@@ -83,7 +83,12 @@ describe('Audio Routes Integration Tests', () => {
       expect(response.body.error_code).toBe('UNSUPPORTED_FORMAT');
     });
 
-    test('Should bypass sttService when local_transcript is provided', async () => {
+    test('Should ignore local_transcript and call sttService when provided', async () => {
+      sttService.transcribe.mockResolvedValue({
+        text: 'Oil leakage noticed near Valve V-99.',
+        language: 'en',
+      });
+
       const response = await request(app)
         .post('/api/audio/transcribe')
         .attach('audio', testWav)
@@ -91,9 +96,9 @@ describe('Audio Routes Integration Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.text).toBe('Manual local transcription from mobile client');
+      expect(response.body.text).toBe('Oil leakage noticed near Valve V-99.');
       expect(response.body.file).toHaveProperty('filename');
-      expect(sttService.transcribe).not.toHaveBeenCalled();
+      expect(sttService.transcribe).toHaveBeenCalled();
     });
   });
 

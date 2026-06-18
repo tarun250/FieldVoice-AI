@@ -31,20 +31,10 @@ class AudioController {
         });
       }
 
-      // Execute transcription or use local transcript if provided
-      const localTranscript = req.body.local_transcript || req.body.localTranscript;
-      let text = '';
-      let language = 'en';
-
-      if (localTranscript !== undefined && localTranscript !== null) {
-        text = localTranscript;
-        console.log('Using client-provided local transcript:', text);
-      } else {
-        // Execute transcription
-        const result = await sttService.transcribe(req.file.path);
-        text = result.text;
-        language = result.language;
-      }
+      // Execute transcription using Groq Whisper service
+      const result = await sttService.transcribe(req.file.path);
+      const text = result.text;
+      const language = result.language;
 
       // Return the transcription and the saved file details
       return res.status(200).json({
