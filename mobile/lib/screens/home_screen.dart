@@ -1181,7 +1181,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildMicArea({required bool compact}) {
     final bool canStart = !_isRecording && !_isProcessing && !_waitingForVoiceConfirmation && !_isStartingRecording;
-    final bool canStop = _isRecording;
+    final bool canStop = _isRecording && !_waitingForVoiceConfirmation && !_isProcessing;
 
     return Container(
       margin: const EdgeInsets.all(16),
