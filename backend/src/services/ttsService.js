@@ -59,10 +59,10 @@ class TTSService {
       }
 
       const apiKeyPrimary = process.env.GROQ_API_KEY;
-      const apiKeySecondary = process.env.GROQ_API_KEY_SECONDARY;
+      const apiKeySecondary = process.env.GROQ_API_KEY_2;
 
       if (!apiKeyPrimary && !apiKeySecondary) {
-        throw new Error('GROQ_API_KEY and GROQ_API_KEY_SECONDARY environment variables are both undefined.');
+        throw new Error('GROQ_API_KEY and GROQ_API_KEY_2 environment variables are both undefined.');
       }
 
       // Helper function to call the Groq TTS API
