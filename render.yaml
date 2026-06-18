@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: fieldvoice-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: GROQ_API_KEY
+        sync: false # Render will prompt you to input this securely on deployment
+      - key: OPENROUTER_API_KEY
+        sync: false # Render will prompt you to input this securely on deployment
+      - key: PGHOST
+        value: aws-1-ap-northeast-1.pooler.supabase.com
+      - key: PGPORT
+        value: "6543"
+      - key: PGUSER
+        value: postgres.cljrxacekqznhraudvqo
+      - key: PGDATABASE
+        value: postgres
+      - key: PGPASSWORD
+        value: Supabase123%
+      - key: PGSSL
+        value: "true"

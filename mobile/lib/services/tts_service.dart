@@ -5,6 +5,7 @@ class TtsService {
   final FlutterTts _flutterTts = FlutterTts();
   bool _isSpeaking = false;
   bool get isSpeaking => _isSpeaking;
+  Function()? onCompletion;
 
   TtsService() {
     _initTts();
@@ -17,6 +18,9 @@ class TtsService {
 
     _flutterTts.setCompletionHandler(() {
       _isSpeaking = false;
+      if (onCompletion != null) {
+        onCompletion!();
+      }
     });
 
     _flutterTts.setErrorHandler((msg) {
@@ -53,7 +57,7 @@ class TtsService {
                     "Detected fault code is $faultCode. "
                     "Severity is $severity. "
                     "And $partsText. "
-                    "Hold to confirm and save.";
+                    "Please say confirm to submit, or cancel to try again.";
     await speak(message);
   }
 
