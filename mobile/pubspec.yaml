@@ -39,6 +39,7 @@ dependencies:
   record: ^5.1.2
   flutter_tts: ^4.0.2
   just_audio: ^0.9.38
+  speech_to_text: ^6.6.2
 
   # Storage & Networking
   sqflite: ^2.3.0

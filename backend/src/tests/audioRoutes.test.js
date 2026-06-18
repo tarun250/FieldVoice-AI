@@ -82,6 +82,19 @@ describe('Audio Routes Integration Tests', () => {
       expect(response.status).toBe(400);
       expect(response.body.error_code).toBe('UNSUPPORTED_FORMAT');
     });
+
+    test('Should bypass sttService when local_transcript is provided', async () => {
+      const response = await request(app)
+        .post('/api/audio/transcribe')
+        .attach('audio', testWav)
+        .field('local_transcript', 'Manual local transcription from mobile client');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.text).toBe('Manual local transcription from mobile client');
+      expect(response.body.file).toHaveProperty('filename');
+      expect(sttService.transcribe).not.toHaveBeenCalled();
+    });
   });
 
   describe('DELETE /api/audio/:filename', () => {

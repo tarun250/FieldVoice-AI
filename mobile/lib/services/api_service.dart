@@ -22,18 +22,28 @@ class ApiService {
   }
 
   // 1. Upload audio file and receive Whisper text transcription
-  Future<Map<String, dynamic>> transcribeAudio(String localFilePath, String clientTxUuid) async {
+  Future<Map<String, dynamic>> transcribeAudio(
+    String localFilePath, 
+    String clientTxUuid, {
+    String? localTranscript,
+  }) async {
     try {
       final fileName = localFilePath.split('/').last;
       
-      final formData = FormData.fromMap({
+      final Map<String, dynamic> dataMap = {
         'audio': await MultipartFile.fromFile(
           localFilePath, 
           filename: fileName
         ),
         'client_tx_uuid': clientTxUuid,
         'timestamp': DateTime.now().toUtc().toIso8601String(),
-      });
+      };
+
+      if (localTranscript != null) {
+        dataMap['local_transcript'] = localTranscript;
+      }
+
+      final formData = FormData.fromMap(dataMap);
 
       final response = await _dio.post(
         '/api/audio/transcribe',

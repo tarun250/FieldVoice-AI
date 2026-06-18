@@ -31,14 +31,26 @@ class AudioController {
         });
       }
 
-      // Execute transcription
-      const result = await sttService.transcribe(req.file.path);
+      // Execute transcription or use local transcript if provided
+      const localTranscript = req.body.local_transcript || req.body.localTranscript;
+      let text = '';
+      let language = 'en';
+
+      if (localTranscript !== undefined && localTranscript !== null) {
+        text = localTranscript;
+        console.log('Using client-provided local transcript:', text);
+      } else {
+        // Execute transcription
+        const result = await sttService.transcribe(req.file.path);
+        text = result.text;
+        language = result.language;
+      }
 
       // Return the transcription and the saved file details
       return res.status(200).json({
         success: true,
-        text: result.text,
-        language: result.language,
+        text: text,
+        language: language,
         file: {
           filename: req.file.filename,
           original_name: req.file.originalname,

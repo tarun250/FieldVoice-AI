@@ -22,8 +22,13 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE pending_queue ADD COLUMN local_transcript TEXT');
+        }
+      },
     );
   }
 
@@ -37,13 +42,14 @@ class DatabaseService {
         action_type TEXT NOT NULL,
         status TEXT NOT NULL,
         retry_count INTEGER NOT NULL DEFAULT 0,
-        error_message TEXT
+        error_message TEXT,
+        local_transcript TEXT
       )
     ''');
   }
 
   // Enqueue a new action
-  Future<QueueItem> enqueue(String actionType, String audioPath) async {
+  Future<QueueItem> enqueue(String actionType, String audioPath, {String? localTranscript}) async {
     final db = await database;
     final uuid = const Uuid().v4();
     final item = QueueItem(
@@ -51,6 +57,7 @@ class DatabaseService {
       timestamp: DateTime.now().toUtc().toIso8601String(),
       audioPath: audioPath,
       actionType: actionType,
+      localTranscript: localTranscript,
     );
 
     final id = await db.insert('pending_queue', item.toMap());

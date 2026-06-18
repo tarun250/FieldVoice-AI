@@ -8,6 +8,7 @@ class QueueItem {
   final String status;     // 'pending', 'syncing', 'failed', 'failed_permanently'
   final int retryCount;
   final String? errorMessage;
+  final String? localTranscript;
 
   QueueItem({
     this.id,
@@ -18,6 +19,7 @@ class QueueItem {
     this.status = 'pending',
     this.retryCount = 0,
     this.errorMessage,
+    this.localTranscript,
   });
 
   // Map representation for SQLite insert/update
@@ -31,6 +33,7 @@ class QueueItem {
       'status': status,
       'retry_count': retryCount,
       'error_message': errorMessage,
+      'local_transcript': localTranscript,
     };
   }
 
@@ -45,6 +48,7 @@ class QueueItem {
       status: map['status'] as String,
       retryCount: map['retry_count'] as int,
       errorMessage: map['error_message'] as String?,
+      localTranscript: map['local_transcript'] as String?,
     );
   }
 
@@ -57,6 +61,7 @@ class QueueItem {
     String? status,
     int? retryCount,
     String? errorMessage,
+    String? localTranscript,
   }) {
     return QueueItem(
       id: id ?? this.id,
@@ -67,6 +72,7 @@ class QueueItem {
       status: status ?? this.status,
       retryCount: retryCount ?? this.retryCount,
       errorMessage: errorMessage ?? this.errorMessage,
+      localTranscript: localTranscript ?? this.localTranscript,
     );
   }
 }

@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../config/constants.dart';
 import '../services/audio_service.dart';
 import '../services/tts_service.dart';
@@ -21,6 +22,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   final TtsService _ttsService = TtsService();
   final ApiService _apiService = ApiService();
   final DatabaseService _dbService = DatabaseService.instance;
+
+  // Speech to Text (local) variables
+  final stt.SpeechToText _speechToText = stt.SpeechToText();
+  bool _speechEnabled = false;
+  String _localSpeechResult = '';
 
   // Network and Sync States
   bool _isOnline = true;
@@ -55,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.initState();
     _initConnectivity();
     _initDatabase();
+    _initSpeech();
     
     _pulseController = AnimationController(
       vsync: this,
@@ -64,6 +71,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _ttsService.onCompletion = () {
       _onTtsCompleted();
     };
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      bool available = await _speechToText.initialize(
+        onStatus: (status) => print('Speech status: $status'),
+        onError: (errorNotification) => print('Speech error: $errorNotification'),
+      );
+      setState(() {
+        _speechEnabled = available;
+      });
+    } catch (e) {
+      print('SpeechToText init error: $e');
+    }
   }
 
   Future<void> _initConnectivity() async {
@@ -115,6 +136,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _startRecording() async {
     _cancelConfirmationRecording();
     await _ttsService.stop(); // Stop any reading voice
+    
+    _localSpeechResult = '';
+    
     final path = await _audioService.startRecording();
     if (path != null) {
       setState(() {
@@ -128,6 +152,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _currentAudioStorageUrl = null;
       });
       _pulseController.repeat(reverse: true);
+
+      if (_speechEnabled) {
+        await _speechToText.listen(
+          onResult: (result) {
+            setState(() {
+              _localSpeechResult = result.recognizedWords;
+              if (result.recognizedWords.trim().isNotEmpty) {
+                _statusMessage = 'Listening: "${result.recognizedWords}"';
+              }
+            });
+          },
+          listenFor: const Duration(seconds: 45),
+          pauseFor: const Duration(seconds: 10),
+          listenOptions: stt.SpeechListenOptions(
+            cancelOnError: true,
+            partialResults: true,
+          ),
+        );
+      }
     }
   }
 
@@ -136,6 +179,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     
     _pulseController.stop();
     _pulseController.reset();
+    
+    if (_speechToText.isListening) {
+      await _speechToText.stop();
+    }
     
     final path = await _audioService.stopRecording();
     setState(() {
@@ -161,7 +208,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     try {
       // Step A: Transcribe audio
-      final sttResult = await _apiService.transcribeAudio(filePath, 'live-tx-${DateTime.now().millisecondsSinceEpoch}');
+      final localTx = _localSpeechResult.trim().isNotEmpty ? _localSpeechResult : null;
+      final sttResult = await _apiService.transcribeAudio(
+        filePath, 
+        'live-tx-${DateTime.now().millisecondsSinceEpoch}',
+        localTranscript: localTx,
+      );
       final transcriptText = sttResult['text'] as String;
       
       setState(() {
@@ -226,41 +278,57 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _startVoiceConfirmationListener() async {
     if (!mounted || !_waitingForVoiceConfirmation) return;
     
-    // Stop any active recording first
+    // Stop any active recording/listening first
     if (_isRecording) {
       await _audioService.stopRecording();
+    }
+    if (_speechToText.isListening) {
+      await _speechToText.stop();
     }
     
     setState(() {
       _statusMessage = 'Listening for confirmation...';
       _isRecording = true;
+      _localSpeechResult = '';
     });
 
-    final path = await _audioService.startRecording();
-    if (path == null) {
-      setState(() {
-        _isRecording = false;
-        _statusMessage = 'Microphone error during confirmation.';
-      });
-      return;
-    }
-
-    _recordedFilePath = path;
     _pulseController.repeat(reverse: true);
 
-    // Stop recording after 3 seconds automatically
+    if (_speechEnabled) {
+      await _speechToText.listen(
+        onResult: (result) {
+          setState(() {
+            _localSpeechResult = result.recognizedWords;
+            if (result.recognizedWords.trim().isNotEmpty) {
+              _statusMessage = 'Heard: "${result.recognizedWords}"';
+            }
+          });
+        },
+        listenFor: const Duration(seconds: 4),
+        pauseFor: const Duration(seconds: 3),
+        listenOptions: stt.SpeechListenOptions(
+          cancelOnError: true,
+          partialResults: true,
+        ),
+      );
+    }
+
+    // Process confirmation after 3 seconds automatically
     _confirmationTimer = Timer(const Duration(seconds: 3), () async {
-      await _stopRecordingAndProcessConfirmation(path);
+      await _stopRecordingAndProcessConfirmation();
     });
   }
 
-  Future<void> _stopRecordingAndProcessConfirmation(String path) async {
+  Future<void> _stopRecordingAndProcessConfirmation() async {
     if (!mounted || !_waitingForVoiceConfirmation) return;
 
     _pulseController.stop();
     _pulseController.reset();
 
-    final stopPath = await _audioService.stopRecording();
+    if (_speechToText.isListening) {
+      await _speechToText.stop();
+    }
+
     setState(() {
       _isRecording = false;
       _isProcessing = true;
@@ -268,13 +336,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
 
     try {
-      final finalPath = stopPath ?? path;
-      final sttResult = await _apiService.transcribeAudio(
-        finalPath,
-        'confirm-tx-${DateTime.now().millisecondsSinceEpoch}',
-      );
-      final transcriptText = (sttResult['text'] as String).toLowerCase().trim();
-      
+      final transcriptText = _localSpeechResult.toLowerCase().trim();
       print('Confirmation Transcript: "$transcriptText"');
 
       // Check keywords
@@ -385,7 +447,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       });
 
       // Save report in local SQLite queue
-      await _dbService.enqueue(_activeMode, filePath);
+      await _dbService.enqueue(_activeMode, filePath, localTranscript: _localSpeechResult);
       await _refreshPendingCount();
 
       setState(() {
@@ -419,7 +481,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         await _dbService.updateStatus(item.id!, 'syncing');
         
         // Transcribe
-        final stt = await _apiService.transcribeAudio(item.audioPath, item.clientTxUuid);
+        final stt = await _apiService.transcribeAudio(
+          item.audioPath, 
+          item.clientTxUuid,
+          localTranscript: item.localTranscript,
+        );
         final rawText = stt['text'] as String;
         final audioUrl = stt['file']['storage_path'] as String;
 
