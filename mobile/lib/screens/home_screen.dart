@@ -30,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _explicitSpeechStop = false;
   String _speechSessionAccumulated = '';
   bool _isStartingRecording = false;
+  bool _isSpeechListening = false;
 
   // Network and Sync States
   bool _isOnline = true;
@@ -95,6 +96,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _onSpeechStatus(String status) {
     print('Speech status: $status');
+    setState(() {
+      _isSpeechListening = (status == 'listening');
+    });
     if (status == 'notListening' || status == 'done') {
       if (_explicitSpeechStop) {
         _explicitSpeechStop = false;
@@ -109,23 +113,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     if (_waitingForVoiceConfirmation) {
       print('Speech stopped implicitly during confirmation phase. Words: "$_localSpeechResult"');
-      _cancelConfirmationRecording();
       
-      final words = _localSpeechResult.toLowerCase();
-      final bool isConfirm = words.contains('confirm') ||
-                            words.contains('yes') ||
-                            words.contains('yeah') ||
-                            words.contains('ok') ||
-                            words.contains('submit') ||
-                            words.contains('approved');
+      final words = _localSpeechResult.trim().toLowerCase();
+      if (words.isNotEmpty) {
+        final bool isConfirm = words.contains('confirm') ||
+                              words.contains('yes') ||
+                              words.contains('yeah') ||
+                              words.contains('ok') ||
+                              words.contains('submit') ||
+                              words.contains('approved');
 
-      final bool isCancel = words.contains('cancel') ||
-                           words.contains('reject') ||
-                           words.contains('no') ||
-                           words.contains('try again') ||
-                           words.contains('reset');
+        final bool isCancel = words.contains('cancel') ||
+                             words.contains('reject') ||
+                             words.contains('no') ||
+                             words.contains('try again') ||
+                             words.contains('reset');
 
-      _processVoiceConfirmation(isConfirm, isCancel);
+        _cancelConfirmationRecording();
+        _processVoiceConfirmation(isConfirm, isCancel);
+      } else {
+        // Silent stop: just restart listening without resetting timer
+        _startVoiceConfirmationListener(resetTimer: false);
+      }
     } else if (_isRecording) {
       print('Speech stopped implicitly during recording. Restarting listener...');
       _restartRecordingSpeechListener();
@@ -460,7 +469,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   // Hands-free voice confirmation completion handler
   void _onTtsCompleted() {
     if (_waitingForVoiceConfirmation) {
-      _startVoiceConfirmationListener();
+      _startVoiceConfirmationListener(resetTimer: false);
     }
   }
 
@@ -473,7 +482,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  Future<void> _startVoiceConfirmationListener() async {
+  Future<void> _startVoiceConfirmationListener({bool resetTimer = true}) async {
     if (!mounted || !_waitingForVoiceConfirmation) return;
     
     // Stop any active recording/listening first
@@ -486,7 +495,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
     
     setState(() {
-      _statusMessage = 'Listening for confirmation (15s)...';
+      _statusMessage = 'Listening for confirmation...';
       _isRecording = true;
       _localSpeechResult = '';
     });
@@ -526,10 +535,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             if (isConfirm || isCancel) {
               _cancelConfirmationRecording();
               _processVoiceConfirmation(isConfirm, isCancel);
-            } else if (result.finalResult) {
-              // Stopped speaking and no keywords matched!
-              _cancelConfirmationRecording();
-              _processVoiceConfirmation(false, false);
             }
           },
           listenFor: const Duration(seconds: 15),
@@ -544,26 +549,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       }
     }
 
-    // Stop listening and timeout after 15 seconds automatically
-    _confirmationTimer = Timer(const Duration(seconds: 15), () async {
-      if (_waitingForVoiceConfirmation) {
-        if (_speechToText.isListening) {
-          _explicitSpeechStop = true;
-          await _speechToText.stop();
+    if (resetTimer) {
+      _confirmationTimer?.cancel();
+      // Stop listening and timeout after 15 seconds automatically
+      _confirmationTimer = Timer(const Duration(seconds: 15), () async {
+        if (_waitingForVoiceConfirmation) {
+          if (_speechToText.isListening) {
+            _explicitSpeechStop = true;
+            await _speechToText.stop();
+          }
+          _pulseController.stop();
+          _pulseController.reset();
+
+          setState(() {
+            _waitingForVoiceConfirmation = false;
+            _isRecording = false;
+            _statusMessage = 'Confirmation timed out. Submit manually.';
+          });
+
+          await _ttsService.speak('Confirmation timed out. Please tap confirm or cancel.');
+          _startIdleVoiceTriggerListener();
         }
-        _pulseController.stop();
-        _pulseController.reset();
-
-        setState(() {
-          _waitingForVoiceConfirmation = false;
-          _isRecording = false;
-          _statusMessage = 'Confirmation timed out. Submit manually.';
-        });
-
-        await _ttsService.speak('Confirmation timed out. Please tap confirm or cancel.');
-        _startIdleVoiceTriggerListener();
-      }
-    });
+      });
+    }
   }
 
   Future<void> _processVoiceConfirmation(bool isConfirm, bool isCancel) async {
@@ -1344,6 +1352,38 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
             ],
+          ),
+          
+          // Speech recognition status pill
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: _isSpeechListening ? Colors.purple[50] : Colors.grey[100],
+              border: Border.all(color: _isSpeechListening ? Colors.purple[200]! : Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _isSpeechListening ? Colors.purple : Colors.grey,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _isSpeechListening ? 'Mic Active' : 'Mic Off',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: _isSpeechListening ? Colors.purple[800] : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
           ),
           
           // Connection status pill
