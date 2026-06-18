@@ -3,8 +3,8 @@ services:
     name: fieldvoice-backend
     env: node
     rootDir: backend
-    buildCommand: npm install
-    startCommand: node src/index.js
+    buildCommand: "if [ -f package.json ]; then npm install; else npm --prefix backend install; fi"
+    startCommand: "if [ -f src/index.js ]; then node src/index.js; else node backend/src/index.js; fi"
     envVars:
       - key: PORT
         value: 3000
