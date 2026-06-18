@@ -1,8 +1,9 @@
 // home_screen.dart
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:path_provider/path_provider.dart';
 import '../config/constants.dart';
 import '../services/audio_service.dart';
 import '../services/tts_service.dart';
@@ -23,14 +24,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   final ApiService _apiService = ApiService();
   final DatabaseService _dbService = DatabaseService.instance;
 
-  // Speech to Text (local) variables
-  final stt.SpeechToText _speechToText = stt.SpeechToText();
-  bool _speechEnabled = false;
-  String _localSpeechResult = '';
-  bool _explicitSpeechStop = false;
-  String _speechSessionAccumulated = '';
+  // Streaming audio and real-time check variables
+  StreamSubscription<Uint8List>? _audioStreamSubscription;
+  final BytesBuilder _audioBytesBuilder = BytesBuilder();
+  Timer? _realtimeCheckTimer;
+  bool _isCheckingRealtime = false;
   bool _isStartingRecording = false;
-  bool _isSpeechListening = false;
 
   // Network and Sync States
   bool _isOnline = true;
@@ -65,7 +64,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.initState();
     _initConnectivity();
     _initDatabase();
-    _initSpeech();
     
     _pulseController = AnimationController(
       vsync: this,
@@ -75,86 +73,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _ttsService.onCompletion = () {
       _onTtsCompleted();
     };
-  }
-
-  Future<void> _initSpeech() async {
-    try {
-      bool available = await _speechToText.initialize(
-        onStatus: _onSpeechStatus,
-        onError: (errorNotification) => print('Speech error: $errorNotification'),
-      );
-      setState(() {
-        _speechEnabled = available;
-      });
-      if (available) {
-        _startIdleVoiceTriggerListener();
-      }
-    } catch (e) {
-      print('SpeechToText init error: $e');
-    }
-  }
-
-  void _onSpeechStatus(String status) {
-    print('Speech status: $status');
-    setState(() {
-      _isSpeechListening = (status == 'listening');
-    });
-    if (status == 'notListening' || status == 'done') {
-      if (_explicitSpeechStop) {
-        _explicitSpeechStop = false;
-        return;
-      }
-      _handleImplicitSpeechStop();
-    }
-  }
-
-  void _handleImplicitSpeechStop() {
-    if (!mounted) return;
-
-    if (_waitingForVoiceConfirmation) {
-      print('Speech stopped implicitly during confirmation phase. Words: "$_localSpeechResult"');
-      
-      final words = _localSpeechResult.trim().toLowerCase();
-      if (words.isNotEmpty) {
-        final bool isConfirm = words.contains('confirm') ||
-                              words.contains('yes') ||
-                              words.contains('yeah') ||
-                              words.contains('ok') ||
-                              words.contains('submit') ||
-                              words.contains('approved');
-
-        final bool isCancel = words.contains('cancel') ||
-                             words.contains('reject') ||
-                             words.contains('no') ||
-                             words.contains('try again') ||
-                             words.contains('reset');
-
-        _cancelConfirmationRecording();
-        _processVoiceConfirmation(isConfirm, isCancel);
-      } else {
-        // Silent stop: just restart listening without resetting timer
-        _startVoiceConfirmationListener(resetTimer: false);
-      }
-    } else if (_isRecording) {
-      print('Speech stopped implicitly during recording. Restarting listener...');
-      _restartRecordingSpeechListener();
-    } else if (!_isProcessing) {
-      print('Speech stopped implicitly in idle. Restarting idle listener...');
-      _startIdleVoiceTriggerListener();
-    }
-  }
-
-  Future<void> _startIdleVoiceTriggerListener() async {
-    // No-op to prevent background idle listening loops and annoying OS beeps when idle.
-    // Speech recognition only starts when explicitly tapping the START button.
-    return;
-  }
-
-  void _cancelIdleVoiceTriggerListener() {
-    _explicitSpeechStop = true;
-    if (_speechToText.isListening) {
-      _speechToText.stop();
-    }
   }
 
   Future<void> _initConnectivity() async {
@@ -208,18 +126,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     
     _isStartingRecording = true;
     _cancelConfirmationRecording();
-    _cancelIdleVoiceTriggerListener();
     await _ttsService.stop(); // Stop any reading voice
     
     setState(() {
       _statusMessage = 'Starting inspection...';
     });
-
-    try {
-      await _ttsService.speakAndAwait('Inspection started.');
-    } catch (e) {
-      print('TTS failed during start recording: $e');
-    }
 
     if (!mounted) {
       _isStartingRecording = false;
@@ -230,17 +141,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _startRecordingExecution() async {
-    _localSpeechResult = '';
-    _speechSessionAccumulated = '';
-    
     // Check permission first
     final hasPerm = await _audioService.checkPermission();
     if (!hasPerm) {
       setState(() {
         _statusMessage = 'Microphone permission denied.';
+        _isStartingRecording = false;
       });
-      _isStartingRecording = false;
-      _startIdleVoiceTriggerListener();
       return;
     }
 
@@ -255,47 +162,68 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
     _pulseController.repeat(reverse: true);
 
-    // Try initializing again if it wasn't enabled in initState
-    if (!_speechEnabled) {
-      await _initSpeech();
-    }
+    _audioBytesBuilder.clear();
 
-    // Start speech recognition first
-    if (_speechEnabled) {
-      try {
-        _explicitSpeechStop = false;
-        await _speechToText.listen(
-          onResult: (result) {
-            final words = result.recognizedWords.toLowerCase().trim();
-            setState(() {
-              _localSpeechResult = '$_speechSessionAccumulated ${result.recognizedWords}'.trim();
-              if (_localSpeechResult.trim().isNotEmpty) {
-                _statusMessage = 'Listening: "$_localSpeechResult"';
-              }
-            });
+    try {
+      final stream = await _audioService.startStream();
+      if (stream != null) {
+        _audioStreamSubscription = stream.listen((chunk) {
+          _audioBytesBuilder.add(chunk);
+        });
 
-            // Check if user says "stop inspection" or "stop recording" to trigger stop hands-free
-            if (words.contains('stop inspection') || words.contains('stop recording')) {
+        // Start 2.5-second timer to check for "stop inspection" or "stop recording" keyword
+        _isCheckingRealtime = false;
+        _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
+          if (_isCheckingRealtime || !_isRecording || !_isOnline) return;
+          _isCheckingRealtime = true;
+
+          try {
+            final pcmBytes = _audioBytesBuilder.toBytes();
+            if (pcmBytes.isEmpty) {
+              _isCheckingRealtime = false;
+              return;
+            }
+
+            // Slice the last 5 seconds of audio for transcription check to limit Groq Whisper limit usage
+            final int chunkLength = 16000 * 2 * 5; // 5 seconds at 16kHz 16-bit mono PCM
+            final Uint8List checkBytes;
+            if (pcmBytes.length <= chunkLength) {
+              checkBytes = pcmBytes;
+            } else {
+              checkBytes = Uint8List.sublistView(pcmBytes, pcmBytes.length - chunkLength);
+            }
+
+            final tempDir = await getTemporaryDirectory();
+            final tempPath = '${tempDir.path}/realtime_chunk.wav';
+            await _audioService.savePcmToWav(checkBytes, tempPath);
+
+            final res = await _apiService.transcribeAudio(
+              tempPath,
+              'realtime-${DateTime.now().millisecondsSinceEpoch}',
+            );
+            final text = (res['text'] as String).toLowerCase();
+            print('Real-time checker transcript: $text');
+
+            if (text.contains('stop inspection') || text.contains('stop recording')) {
               _stopRecordingAndProcess();
             }
-          },
-          listenFor: const Duration(seconds: 45),
-          pauseFor: const Duration(seconds: 10),
-          listenOptions: stt.SpeechListenOptions(
-            cancelOnError: true,
-            partialResults: true,
-          ),
-        );
-      } catch (e) {
-        print('SpeechToText listen failed: $e');
+          } catch (e) {
+            print('Error in real-time check: $e');
+          } finally {
+            _isCheckingRealtime = false;
+          }
+        });
+      } else {
+        setState(() {
+          _isRecording = false;
+          _statusMessage = 'Failed to initialize audio stream.';
+        });
       }
-    }
-
-    // Start raw audio recording second
-    final path = await _audioService.startRecording();
-    if (path != null) {
+    } catch (e) {
+      print('Failed to start stream recording: $e');
       setState(() {
-        _recordedFilePath = path;
+        _isRecording = false;
+        _statusMessage = 'Recording error: $e';
       });
     }
 
@@ -308,64 +236,45 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _pulseController.stop();
     _pulseController.reset();
     
-    if (_speechToText.isListening) {
-      _explicitSpeechStop = true;
-      await _speechToText.stop();
-    }
+    _realtimeCheckTimer?.cancel();
+    _realtimeCheckTimer = null;
+    await _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
     
-    final path = await _audioService.stopRecording();
+    // Stop recording stream on device
+    await _audioService.stopRecording();
+    
     setState(() {
       _isRecording = false;
     });
 
-    // Speak "Inspection stopped" and wait for completion to avoid overlapping speech
-    await _ttsService.speakAndAwait('Inspection stopped.');
+    final finalBytes = _audioBytesBuilder.toBytes();
+    if (finalBytes.isNotEmpty) {
+      try {
+        final tempDir = await getTemporaryDirectory();
+        final finalPath = '${tempDir.path}/voice_report_${DateTime.now().millisecondsSinceEpoch}.wav';
+        await _audioService.savePcmToWav(finalBytes, finalPath);
+        _recordedFilePath = finalPath;
 
-    if (path != null) {
-      _recordedFilePath = path;
-      if (_isOnline) {
-        _processAudioLive(path);
-      } else {
-        _enqueueAudioOffline(path);
+        if (_isOnline) {
+          _processAudioLive(finalPath);
+        } else {
+          _enqueueAudioOffline(finalPath);
+        }
+      } catch (e) {
+        print('Error saving WAV file: $e');
+        setState(() {
+          _statusMessage = 'Error saving recording: $e';
+        });
       }
     } else {
-      _startIdleVoiceTriggerListener();
+      setState(() {
+        _statusMessage = 'No audio captured.';
+      });
     }
   }
 
-  Future<void> _restartRecordingSpeechListener() async {
-    if (!mounted || !_isRecording || _waitingForVoiceConfirmation || _isProcessing) return;
-    if (!_speechEnabled) return;
-    try {
-      _speechSessionAccumulated = _localSpeechResult;
-      _explicitSpeechStop = false;
-      await _speechToText.listen(
-        onResult: (result) {
-          final words = result.recognizedWords.toLowerCase().trim();
-          setState(() {
-            _localSpeechResult = '$_speechSessionAccumulated ${result.recognizedWords}'.trim();
-            if (_localSpeechResult.trim().isNotEmpty) {
-              _statusMessage = 'Listening: "$_localSpeechResult"';
-            }
-          });
-
-          // Check if user says "stop inspection" or "stop recording" to trigger stop hands-free
-          if (words.contains('stop inspection') || words.contains('stop recording')) {
-            _stopRecordingAndProcess();
-          }
-        },
-        listenFor: const Duration(seconds: 45),
-        pauseFor: const Duration(seconds: 10),
-        listenOptions: stt.SpeechListenOptions(
-          cancelOnError: true,
-          partialResults: true,
-        ),
-      );
-    } catch (e) {
-      print('Error restarting recording speech listener: $e');
-    }
-  }
-
+  // 1. Live Processing Loop (Online Path)
   // 1. Live Processing Loop (Online Path)
   Future<void> _processAudioLive(String filePath) async {
     setState(() {
@@ -374,21 +283,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
 
     try {
-      // Strip out the hands-free trigger words from the transcript
-      String cleanText = _localSpeechResult.trim();
-      final lower = cleanText.toLowerCase();
-      if (lower.endsWith('stop inspection')) {
-        cleanText = cleanText.substring(0, cleanText.length - 'stop inspection'.length).trim();
-      } else if (lower.endsWith('stop recording')) {
-        cleanText = cleanText.substring(0, cleanText.length - 'stop recording'.length).trim();
-      }
-
-      // Step A: Transcribe audio
-      final localTx = cleanText.isNotEmpty ? cleanText : null;
+      // Step A: Transcribe audio (no local transcript since on-device speech-to-text is disabled)
       final sttResult = await _apiService.transcribeAudio(
         filePath, 
         'live-tx-${DateTime.now().millisecondsSinceEpoch}',
-        localTranscript: localTx,
+        localTranscript: null,
       );
       final transcriptText = sttResult['text'] as String;
       
@@ -405,29 +304,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _currentAudioStorageUrl = sttResult['file']['storage_path'] as String?;
           _waitingForVoiceConfirmation = true;
           _isProcessing = false;
-          _statusMessage = 'Reviewing. Speak confirmation or tap confirm.';
+          _statusMessage = 'Reviewing. Tap CONFIRM or REJECT below.';
         });
-
-        // Trigger TTS read back confirmation to Rahul
-        final parts = List<String>.from(extractResult['parts_required'] ?? []);
-        await _ttsService.speakInspectionConfirmation(
-          equipmentId: extractResult['equipment_id'] ?? 'Unspecified machine',
-          faultCode: extractResult['fault_code'] ?? 'Unspecified fault',
-          severity: extractResult['severity'] ?? 'MEDIUM',
-          parts: parts,
-        );
       } else {
         // Step B: RAG Search manual
         final answer = await _apiService.queryKnowledgeBase(transcriptText);
         setState(() {
           _ragResponse = answer;
           _isProcessing = false;
-          _statusMessage = 'Query answered. Synthesizing voice response...';
+          _statusMessage = 'Query answered. Please review the response.';
         });
-
-        // Playback query answer verbally
-        await _ttsService.speakAnswer(answer);
-        _startIdleVoiceTriggerListener(); // Restart wake trigger listener
       }
     } catch (e) {
       setState(() {
@@ -437,164 +323,25 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Processing Failed: ${e.toString()}')),
       );
-      _startIdleVoiceTriggerListener(); // Restart wake trigger listener
     }
   }
 
   // Hands-free voice confirmation completion handler
   void _onTtsCompleted() {
-    if (_waitingForVoiceConfirmation) {
-      _startVoiceConfirmationListener(resetTimer: false);
-    }
+    // No-op (TTS disabled)
   }
 
   void _cancelConfirmationRecording() {
     _confirmationTimer?.cancel();
     _confirmationTimer = null;
-    _explicitSpeechStop = true;
-    if (_speechToText.isListening) {
-      _speechToText.stop();
-    }
   }
 
   Future<void> _startVoiceConfirmationListener({bool resetTimer = true}) async {
-    if (!mounted || !_waitingForVoiceConfirmation) return;
-    
-    // Stop any active recording/listening first
-    if (_isRecording) {
-      await _audioService.stopRecording();
-    }
-    if (_speechToText.isListening) {
-      _explicitSpeechStop = true;
-      await _speechToText.stop();
-    }
-    
-    setState(() {
-      _statusMessage = 'Listening for confirmation...';
-      _isRecording = true;
-      _localSpeechResult = '';
-    });
-
-    _pulseController.repeat(reverse: true);
-
-    // Try initializing again if it wasn't enabled
-    if (!_speechEnabled) {
-      await _initSpeech();
-    }
-
-    if (_speechEnabled) {
-      try {
-        _explicitSpeechStop = false;
-        await _speechToText.listen(
-          onResult: (result) {
-            final words = result.recognizedWords.toLowerCase();
-            setState(() {
-              _localSpeechResult = result.recognizedWords;
-              _statusMessage = 'Heard: "${result.recognizedWords}"';
-            });
-
-            // Check keywords in real-time
-            final bool isConfirm = words.contains('confirm') ||
-                                  words.contains('yes') ||
-                                  words.contains('yeah') ||
-                                  words.contains('ok') ||
-                                  words.contains('submit') ||
-                                  words.contains('approved');
-
-            final bool isCancel = words.contains('cancel') ||
-                                 words.contains('reject') ||
-                                 words.contains('no') ||
-                                 words.contains('try again') ||
-                                 words.contains('reset');
-
-            if (isConfirm || isCancel) {
-              _cancelConfirmationRecording();
-              _processVoiceConfirmation(isConfirm, isCancel);
-            }
-          },
-          listenFor: const Duration(seconds: 15),
-          pauseFor: const Duration(seconds: 3),
-          listenOptions: stt.SpeechListenOptions(
-            cancelOnError: false, // Keep listening on silence/errors
-            partialResults: true,
-          ),
-        );
-      } catch (e) {
-        print('SpeechToText listen confirmation failed: $e');
-      }
-    }
-
-    if (resetTimer) {
-      _confirmationTimer?.cancel();
-      // Stop listening and timeout after 15 seconds automatically
-      _confirmationTimer = Timer(const Duration(seconds: 15), () async {
-        if (_waitingForVoiceConfirmation) {
-          if (_speechToText.isListening) {
-            _explicitSpeechStop = true;
-            await _speechToText.stop();
-          }
-          _pulseController.stop();
-          _pulseController.reset();
-
-          setState(() {
-            _waitingForVoiceConfirmation = false;
-            _isRecording = false;
-            _statusMessage = 'Confirmation timed out. Submit manually.';
-          });
-
-          await _ttsService.speak('Confirmation timed out. Please tap confirm or cancel.');
-          _startIdleVoiceTriggerListener();
-        }
-      });
-    }
+    // No-op (Voice confirmation disabled)
   }
 
   Future<void> _processVoiceConfirmation(bool isConfirm, bool isCancel) async {
-    if (!mounted || !_waitingForVoiceConfirmation) return;
-
-    _pulseController.stop();
-    _pulseController.reset();
-
-    if (_speechToText.isListening) {
-      _explicitSpeechStop = true;
-      await _speechToText.stop();
-    }
-
-    setState(() {
-      _isRecording = false;
-      _isProcessing = true;
-      _statusMessage = 'Processing confirmation voice...';
-    });
-
-    try {
-      if (isConfirm) {
-        await _executeSubmitWorkOrder();
-      } else if (isCancel) {
-        setState(() {
-          _waitingForVoiceConfirmation = false;
-          _extractedData = null;
-          _rawTranscript = null;
-          _isProcessing = false;
-          _statusMessage = 'Report rejected. Hold button to record again.';
-        });
-        await _ttsService.speak('Cancelled.');
-        _startIdleVoiceTriggerListener();
-      } else {
-        setState(() {
-          _isProcessing = false;
-          _statusMessage = 'Did not recognize command. Try again...';
-        });
-        await _ttsService.speak('Sorry, I did not catch that. Please say confirm or cancel.');
-      }
-    } catch (e) {
-      setState(() {
-        _isProcessing = false;
-        _statusMessage = 'Confirmation error: ${e.toString()}';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Voice Confirmation failed: ${e.toString()}. Please tap buttons manually.')),
-      );
-    }
+    // No-op (Voice confirmation disabled)
   }
 
   Future<void> _executeSubmitWorkOrder() async {
@@ -632,9 +379,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Work Order created successfully.')),
       );
-
-      await _ttsService.speak('Work order confirmed and submitted.');
-      _startIdleVoiceTriggerListener();
     } catch (e) {
       setState(() {
         _isProcessing = false;
@@ -660,30 +404,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _statusMessage = 'Saving report to offline database...';
       });
 
-      // Strip out the hands-free trigger words from the transcript
-      String cleanText = _localSpeechResult.trim();
-      final lower = cleanText.toLowerCase();
-      if (lower.endsWith('stop inspection')) {
-        cleanText = cleanText.substring(0, cleanText.length - 'stop inspection'.length).trim();
-      } else if (lower.endsWith('stop recording')) {
-        cleanText = cleanText.substring(0, cleanText.length - 'stop recording'.length).trim();
-      }
-
       // Save report in local SQLite queue
-      await _dbService.enqueue(_activeMode, filePath, localTranscript: cleanText);
+      await _dbService.enqueue(_activeMode, filePath, localTranscript: null);
       await _refreshPendingCount();
 
       setState(() {
         _statusMessage = 'Saved offline. Will synchronize once network returns.';
       });
-
-      await _ttsService.speak('Report saved offline. Rahul, I will upload it when connection is restored.');
-      _startIdleVoiceTriggerListener();
     } catch (e) {
       setState(() {
         _statusMessage = 'Database queue failed: ${e.toString()}';
       });
-      _startIdleVoiceTriggerListener();
     }
   }
 
@@ -970,10 +701,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         _extractedData = null;
                         _rawTranscript = null;
                         _currentAudioStorageUrl = null;
-                        _statusMessage = 'Report rejected. Hold button to record again.';
+                        _statusMessage = 'Report rejected. Tap START to record again.';
                       });
-                      _ttsService.speak('Report cancelled.');
-                      _startIdleVoiceTriggerListener();
                     },
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1085,9 +814,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   setState(() {
                     _ragResponse = null;
                     _rawTranscript = null;
-                    _statusMessage = 'Ready. Hold button to speak again.';
+                    _statusMessage = 'Ready. Tap START to ask another question.';
                   });
-                  _startIdleVoiceTriggerListener();
                 },
                 child: Text(
                   'DISMISS',
@@ -1196,12 +924,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           const SizedBox(height: 4),
           Text(
             _isRecording
-                ? 'Speak inspection details. Say "Stop Inspection" or tap button.'
+                ? 'Speak inspection details. Tap STOP when finished.'
                 : (_isProcessing
                     ? 'Transcribing and analyzing report...'
                     : (_waitingForVoiceConfirmation
-                        ? 'Say "Confirm" or "Cancel", or tap buttons above.'
-                        : 'Say "Start Inspection" or tap button below to begin.')),
+                        ? 'Tap CONFIRM or REJECT to submit or discard.'
+                        : 'Tap START below to begin inspection.')),
             style: TextStyle(
               fontSize: compact ? 10 : 12,
               color: Colors.blueGrey[600],
@@ -1329,13 +1057,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ],
           ),
           
-          // Speech recognition status pill
+          // Mic / Recording status pill
           Container(
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: _isSpeechListening ? Colors.purple[50] : Colors.grey[100],
-              border: Border.all(color: _isSpeechListening ? Colors.purple[200]! : Colors.grey[300]!),
+              color: _isRecording ? Colors.red[50] : Colors.grey[100],
+              border: Border.all(color: _isRecording ? Colors.red[200]! : Colors.grey[300]!),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(
@@ -1344,17 +1072,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: _isSpeechListening ? Colors.purple : Colors.grey,
+                    color: _isRecording ? Colors.red : Colors.grey,
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  _isSpeechListening ? 'Mic Active' : 'Mic Off',
+                  _isRecording ? 'Mic Active' : 'Mic Off',
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    color: _isSpeechListening ? Colors.purple[800] : Colors.grey[600],
+                    color: _isRecording ? Colors.red[800] : Colors.grey[600],
                   ),
                 ),
               ],
