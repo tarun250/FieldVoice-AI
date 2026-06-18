@@ -27,6 +27,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   final stt.SpeechToText _speechToText = stt.SpeechToText();
   bool _speechEnabled = false;
   String _localSpeechResult = '';
+  bool _explicitSpeechStop = false;
+  String _speechSessionAccumulated = '';
+  bool _isStartingRecording = false;
 
   // Network and Sync States
   bool _isOnline = true;
@@ -76,14 +79,97 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Future<void> _initSpeech() async {
     try {
       bool available = await _speechToText.initialize(
-        onStatus: (status) => print('Speech status: $status'),
+        onStatus: _onSpeechStatus,
         onError: (errorNotification) => print('Speech error: $errorNotification'),
       );
       setState(() {
         _speechEnabled = available;
       });
+      if (available) {
+        _startIdleVoiceTriggerListener();
+      }
     } catch (e) {
       print('SpeechToText init error: $e');
+    }
+  }
+
+  void _onSpeechStatus(String status) {
+    print('Speech status: $status');
+    if (status == 'notListening' || status == 'done') {
+      if (_explicitSpeechStop) {
+        _explicitSpeechStop = false;
+        return;
+      }
+      _handleImplicitSpeechStop();
+    }
+  }
+
+  void _handleImplicitSpeechStop() {
+    if (!mounted) return;
+
+    if (_waitingForVoiceConfirmation) {
+      print('Speech stopped implicitly during confirmation phase. Words: "$_localSpeechResult"');
+      _cancelConfirmationRecording();
+      
+      final words = _localSpeechResult.toLowerCase();
+      final bool isConfirm = words.contains('confirm') ||
+                            words.contains('yes') ||
+                            words.contains('yeah') ||
+                            words.contains('ok') ||
+                            words.contains('submit') ||
+                            words.contains('approved');
+
+      final bool isCancel = words.contains('cancel') ||
+                           words.contains('reject') ||
+                           words.contains('no') ||
+                           words.contains('try again') ||
+                           words.contains('reset');
+
+      _processVoiceConfirmation(isConfirm, isCancel);
+    } else if (_isRecording) {
+      print('Speech stopped implicitly during recording. Restarting listener...');
+      _restartRecordingSpeechListener();
+    } else if (!_isProcessing) {
+      print('Speech stopped implicitly in idle. Restarting idle listener...');
+      _startIdleVoiceTriggerListener();
+    }
+  }
+
+  Future<void> _startIdleVoiceTriggerListener() async {
+    if (!mounted || _isRecording || _waitingForVoiceConfirmation || _isProcessing || _isStartingRecording) return;
+
+    if (!_speechEnabled) return;
+
+    setState(() {
+      _statusMessage = 'System ready. Say "Start Inspection" or tap Start button.';
+    });
+
+    try {
+      _explicitSpeechStop = false;
+      await _speechToText.listen(
+        onResult: (result) {
+          final words = result.recognizedWords.toLowerCase().trim();
+          if (words.contains('start inspection') || words.contains('start recording')) {
+            _cancelConfirmationRecording();
+            _startRecording();
+          }
+        },
+        listenFor: const Duration(hours: 1),
+        pauseFor: const Duration(seconds: 60),
+        listenOptions: stt.SpeechListenOptions(
+          cancelOnError: false,
+          partialResults: true,
+        ),
+      );
+    } catch (e) {
+      print('Idle trigger listener failed: $e');
+    }
+  }
+
+  void _cancelIdleVoiceTriggerListener() {
+    _explicitSpeechStop = true;
+    if (_speechToText.isListening) {
+      _speechToText.stop();
     }
   }
 
@@ -134,10 +220,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   // Handle Recording Trigger
   Future<void> _startRecording() async {
+    if (_isRecording || _isStartingRecording) return;
+    
+    _isStartingRecording = true;
     _cancelConfirmationRecording();
+    _cancelIdleVoiceTriggerListener();
     await _ttsService.stop(); // Stop any reading voice
     
+    setState(() {
+      _statusMessage = 'Starting inspection...';
+    });
+
+    try {
+      await _ttsService.speakAndAwait('Inspection started.');
+    } catch (e) {
+      print('TTS failed during start recording: $e');
+    }
+
+    if (!mounted) {
+      _isStartingRecording = false;
+      return;
+    }
+
+    await _startRecordingExecution();
+  }
+
+  Future<void> _startRecordingExecution() async {
     _localSpeechResult = '';
+    _speechSessionAccumulated = '';
     
     // Check permission first
     final hasPerm = await _audioService.checkPermission();
@@ -145,6 +255,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       setState(() {
         _statusMessage = 'Microphone permission denied.';
       });
+      _isStartingRecording = false;
+      _startIdleVoiceTriggerListener();
       return;
     }
 
@@ -167,14 +279,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     // Start speech recognition first
     if (_speechEnabled) {
       try {
+        _explicitSpeechStop = false;
         await _speechToText.listen(
           onResult: (result) {
+            final words = result.recognizedWords.toLowerCase().trim();
             setState(() {
-              _localSpeechResult = result.recognizedWords;
-              if (result.recognizedWords.trim().isNotEmpty) {
-                _statusMessage = 'Listening: "${result.recognizedWords}"';
+              _localSpeechResult = '$_speechSessionAccumulated ${result.recognizedWords}'.trim();
+              if (_localSpeechResult.trim().isNotEmpty) {
+                _statusMessage = 'Listening: "$_localSpeechResult"';
               }
             });
+
+            // Check if user says "stop inspection" or "stop recording" to trigger stop hands-free
+            if (words.contains('stop inspection') || words.contains('stop recording')) {
+              _stopRecordingAndProcess();
+            }
           },
           listenFor: const Duration(seconds: 45),
           pauseFor: const Duration(seconds: 10),
@@ -195,6 +314,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _recordedFilePath = path;
       });
     }
+
+    _isStartingRecording = false;
   }
 
   Future<void> _stopRecordingAndProcess() async {
@@ -204,6 +325,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _pulseController.reset();
     
     if (_speechToText.isListening) {
+      _explicitSpeechStop = true;
       await _speechToText.stop();
     }
     
@@ -212,6 +334,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _isRecording = false;
     });
 
+    // Speak "Inspection stopped" and wait for completion to avoid overlapping speech
+    await _ttsService.speakAndAwait('Inspection stopped.');
+
     if (path != null) {
       _recordedFilePath = path;
       if (_isOnline) {
@@ -219,6 +344,41 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       } else {
         _enqueueAudioOffline(path);
       }
+    } else {
+      _startIdleVoiceTriggerListener();
+    }
+  }
+
+  Future<void> _restartRecordingSpeechListener() async {
+    if (!mounted || !_isRecording || _waitingForVoiceConfirmation || _isProcessing) return;
+    if (!_speechEnabled) return;
+    try {
+      _speechSessionAccumulated = _localSpeechResult;
+      _explicitSpeechStop = false;
+      await _speechToText.listen(
+        onResult: (result) {
+          final words = result.recognizedWords.toLowerCase().trim();
+          setState(() {
+            _localSpeechResult = '$_speechSessionAccumulated ${result.recognizedWords}'.trim();
+            if (_localSpeechResult.trim().isNotEmpty) {
+              _statusMessage = 'Listening: "$_localSpeechResult"';
+            }
+          });
+
+          // Check if user says "stop inspection" or "stop recording" to trigger stop hands-free
+          if (words.contains('stop inspection') || words.contains('stop recording')) {
+            _stopRecordingAndProcess();
+          }
+        },
+        listenFor: const Duration(seconds: 45),
+        pauseFor: const Duration(seconds: 10),
+        listenOptions: stt.SpeechListenOptions(
+          cancelOnError: true,
+          partialResults: true,
+        ),
+      );
+    } catch (e) {
+      print('Error restarting recording speech listener: $e');
     }
   }
 
@@ -230,8 +390,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     });
 
     try {
+      // Strip out the hands-free trigger words from the transcript
+      String cleanText = _localSpeechResult.trim();
+      final lower = cleanText.toLowerCase();
+      if (lower.endsWith('stop inspection')) {
+        cleanText = cleanText.substring(0, cleanText.length - 'stop inspection'.length).trim();
+      } else if (lower.endsWith('stop recording')) {
+        cleanText = cleanText.substring(0, cleanText.length - 'stop recording'.length).trim();
+      }
+
       // Step A: Transcribe audio
-      final localTx = _localSpeechResult.trim().isNotEmpty ? _localSpeechResult : null;
+      final localTx = cleanText.isNotEmpty ? cleanText : null;
       final sttResult = await _apiService.transcribeAudio(
         filePath, 
         'live-tx-${DateTime.now().millisecondsSinceEpoch}',
@@ -274,6 +443,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
         // Playback query answer verbally
         await _ttsService.speakAnswer(answer);
+        _startIdleVoiceTriggerListener(); // Restart wake trigger listener
       }
     } catch (e) {
       setState(() {
@@ -283,6 +453,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Processing Failed: ${e.toString()}')),
       );
+      _startIdleVoiceTriggerListener(); // Restart wake trigger listener
     }
   }
 
@@ -296,6 +467,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void _cancelConfirmationRecording() {
     _confirmationTimer?.cancel();
     _confirmationTimer = null;
+    _explicitSpeechStop = true;
     if (_speechToText.isListening) {
       _speechToText.stop();
     }
@@ -309,6 +481,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       await _audioService.stopRecording();
     }
     if (_speechToText.isListening) {
+      _explicitSpeechStop = true;
       await _speechToText.stop();
     }
     
@@ -327,6 +500,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     if (_speechEnabled) {
       try {
+        _explicitSpeechStop = false;
         await _speechToText.listen(
           onResult: (result) {
             final words = result.recognizedWords.toLowerCase();
@@ -352,10 +526,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             if (isConfirm || isCancel) {
               _cancelConfirmationRecording();
               _processVoiceConfirmation(isConfirm, isCancel);
+            } else if (result.finalResult) {
+              // Stopped speaking and no keywords matched!
+              _cancelConfirmationRecording();
+              _processVoiceConfirmation(false, false);
             }
           },
           listenFor: const Duration(seconds: 15),
-          pauseFor: const Duration(seconds: 10),
+          pauseFor: const Duration(seconds: 3),
           listenOptions: stt.SpeechListenOptions(
             cancelOnError: false, // Keep listening on silence/errors
             partialResults: true,
@@ -370,6 +548,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _confirmationTimer = Timer(const Duration(seconds: 15), () async {
       if (_waitingForVoiceConfirmation) {
         if (_speechToText.isListening) {
+          _explicitSpeechStop = true;
           await _speechToText.stop();
         }
         _pulseController.stop();
@@ -382,6 +561,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         });
 
         await _ttsService.speak('Confirmation timed out. Please tap confirm or cancel.');
+        _startIdleVoiceTriggerListener();
       }
     });
   }
@@ -393,6 +573,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _pulseController.reset();
 
     if (_speechToText.isListening) {
+      _explicitSpeechStop = true;
       await _speechToText.stop();
     }
 
@@ -414,6 +595,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _statusMessage = 'Report rejected. Hold button to record again.';
         });
         await _ttsService.speak('Cancelled.');
+        _startIdleVoiceTriggerListener();
+      } else {
+        setState(() {
+          _isProcessing = false;
+          _statusMessage = 'Did not recognize command. Try again...';
+        });
+        await _ttsService.speak('Sorry, I did not catch that. Please say confirm or cancel.');
       }
     } catch (e) {
       setState(() {
@@ -463,6 +651,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       );
 
       await _ttsService.speak('Work order confirmed and submitted.');
+      _startIdleVoiceTriggerListener();
     } catch (e) {
       setState(() {
         _isProcessing = false;
@@ -488,8 +677,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _statusMessage = 'Saving report to offline database...';
       });
 
+      // Strip out the hands-free trigger words from the transcript
+      String cleanText = _localSpeechResult.trim();
+      final lower = cleanText.toLowerCase();
+      if (lower.endsWith('stop inspection')) {
+        cleanText = cleanText.substring(0, cleanText.length - 'stop inspection'.length).trim();
+      } else if (lower.endsWith('stop recording')) {
+        cleanText = cleanText.substring(0, cleanText.length - 'stop recording'.length).trim();
+      }
+
       // Save report in local SQLite queue
-      await _dbService.enqueue(_activeMode, filePath, localTranscript: _localSpeechResult);
+      await _dbService.enqueue(_activeMode, filePath, localTranscript: cleanText);
       await _refreshPendingCount();
 
       setState(() {
@@ -497,10 +695,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       });
 
       await _ttsService.speak('Report saved offline. Rahul, I will upload it when connection is restored.');
+      _startIdleVoiceTriggerListener();
     } catch (e) {
       setState(() {
         _statusMessage = 'Database queue failed: ${e.toString()}';
       });
+      _startIdleVoiceTriggerListener();
     }
   }
 
@@ -790,6 +990,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         _statusMessage = 'Report rejected. Hold button to record again.';
                       });
                       _ttsService.speak('Report cancelled.');
+                      _startIdleVoiceTriggerListener();
                     },
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -903,6 +1104,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     _rawTranscript = null;
                     _statusMessage = 'Ready. Hold button to speak again.';
                   });
+                  _startIdleVoiceTriggerListener();
                 },
                 child: Text(
                   'DISMISS',
@@ -917,151 +1119,176 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildMicArea({required bool compact}) {
-    return GestureDetector(
-      onLongPressStart: (_) => _startRecording(),
-      onLongPressEnd: (_) => _stopRecordingAndProcess(),
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        width: double.infinity,
-        height: compact ? 185 : null, // Fix height if compact, else let it fill the space
-        decoration: BoxDecoration(
+    final bool canStart = !_isRecording && !_isProcessing && !_waitingForVoiceConfirmation && !_isStartingRecording;
+    final bool canStop = _isRecording;
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      width: double.infinity,
+      height: compact ? 185 : null,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _isRecording
+            ? Colors.red[50]
+            : (_isProcessing ? Colors.blue[50] : Colors.white),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
           color: _isRecording
-              ? Colors.red[50]
-              : (_isProcessing ? Colors.blue[50] : Colors.white),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _isRecording
-                ? Colors.red[300]!
-                : (_isProcessing ? Colors.blue[300]! : Colors.blueGrey[200]!),
-            width: 2.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ],
+              ? Colors.red[300]!
+              : (_isProcessing ? Colors.blue[300]! : Colors.blueGrey[200]!),
+          width: 2.5,
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            if (_isRecording)
-              AnimatedBuilder(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Visual Indicator (Pulsing wave or progress loader or icons)
+          if (_isRecording)
+            SizedBox(
+              height: compact ? 40 : 60,
+              child: AnimatedBuilder(
                 animation: _pulseController,
                 builder: (context, child) {
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: (compact ? 120 : 180) + (_pulseController.value * (compact ? 30 : 50)),
-                        height: (compact ? 120 : 180) + (_pulseController.value * (compact ? 30 : 50)),
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      // Create a custom sound-wave animation
+                      double heightFactor = 0.2 + (0.8 * _pulseController.value);
+                      if (index % 2 == 0) heightFactor = 1.0 - heightFactor;
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: 4,
+                        height: (compact ? 24 : 40) * heightFactor,
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.08 * (1.0 - _pulseController.value)),
-                          shape: BoxShape.circle,
+                          color: Colors.red[600],
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                      ),
-                      Container(
-                        width: (compact ? 90 : 130) + (_pulseController.value * (compact ? 20 : 35)),
-                        height: (compact ? 90 : 130) + (_pulseController.value * (compact ? 20 : 35)),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.12 * (1.0 - _pulseController.value)),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
+                      );
+                    }),
                   );
                 },
               ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: compact ? 64 : 90,
-                  height: compact ? 64 : 90,
-                  decoration: BoxDecoration(
-                    color: _isRecording
-                        ? Colors.red[600]
-                        : (_isProcessing ? Colors.blue[600] : Colors.blueGrey[800]),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (_isRecording
-                                ? Colors.red[600]
-                                : (_isProcessing ? Colors.blue[600] : Colors.blueGrey[800]))!
-                            .withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      )
+            )
+          else if (_isProcessing)
+            SizedBox(
+              height: compact ? 40 : 60,
+              width: compact ? 40 : 60,
+              child: const CircularProgressIndicator(color: Colors.blue, strokeWidth: 3),
+            )
+          else if (_waitingForVoiceConfirmation)
+            Icon(Icons.record_voice_over, size: compact ? 32 : 48, color: Colors.green[600])
+          else
+            Icon(Icons.mic_none, size: compact ? 32 : 48, color: Colors.blueGrey[600]),
+
+          SizedBox(height: compact ? 10 : 16),
+
+          // Status & Info Text
+          Text(
+            _isRecording
+                ? 'INSPECTION IN PROGRESS'
+                : (_isProcessing
+                    ? 'PROCESSING SPEECH...'
+                    : (_waitingForVoiceConfirmation
+                        ? 'WAITING FOR CONFIRMATION'
+                        : 'SYSTEM READY')),
+            style: TextStyle(
+              fontSize: compact ? 11 : 13,
+              fontWeight: FontWeight.bold,
+              color: _isRecording
+                  ? Colors.red[700]
+                  : (_isProcessing
+                      ? Colors.blue[700]
+                      : (_waitingForVoiceConfirmation ? Colors.green[700] : Colors.blueGrey[800])),
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _isRecording
+                ? 'Speak inspection details. Say "Stop Inspection" or tap button.'
+                : (_isProcessing
+                    ? 'Transcribing and analyzing report...'
+                    : (_waitingForVoiceConfirmation
+                        ? 'Say "Confirm" or "Cancel", or tap buttons above.'
+                        : 'Say "Start Inspection" or tap button below to begin.')),
+            style: TextStyle(
+              fontSize: compact ? 10 : 12,
+              color: Colors.blueGrey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          SizedBox(height: compact ? 12 : 20),
+
+          // Action Buttons: Start and Stop
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[600],
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.green[100],
+                    disabledForegroundColor: Colors.green[300],
+                    padding: EdgeInsets.symmetric(vertical: compact ? 10 : 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: canStart ? () => _startRecording() : null,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.play_arrow, size: compact ? 16 : 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'START',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: compact ? 12 : 14,
+                        ),
+                      ),
                     ],
                   ),
-                  child: _isProcessing
-                      ? Padding(
-                          padding: EdgeInsets.all(compact ? 18.0 : 24.0),
-                          child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                        )
-                      : Icon(
-                          _isRecording ? Icons.mic : Icons.mic_none,
-                          size: compact ? 32 : 44,
-                          color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[600],
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.red[100],
+                    disabledForegroundColor: Colors.red[300],
+                    padding: EdgeInsets.symmetric(vertical: compact ? 10 : 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: canStop ? () => _stopRecordingAndProcess() : null,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.stop, size: compact ? 16 : 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'STOP',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: compact ? 12 : 14,
                         ),
-                ),
-                SizedBox(height: compact ? 12 : 20),
-                Text(
-                  _isRecording
-                      ? 'RELEASE TO SEND'
-                      : (_isProcessing ? 'PROCESSING SPEECH...' : 'HOLD ANYWHERE HERE TO SPEAK'),
-                  style: TextStyle(
-                    fontSize: compact ? 12 : 16,
-                    fontWeight: FontWeight.bold,
-                    color: _isRecording
-                        ? Colors.red[700]
-                        : (_isProcessing ? Colors.blue[700] : Colors.blueGrey[800]),
-                    letterSpacing: 0.5,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _isRecording
-                      ? 'Listening...'
-                      : (_waitingForVoiceConfirmation
-                          ? 'Say "Confirm" or "Cancel"'
-                          : 'Tap & Hold down to record voice input'),
-                  style: TextStyle(
-                    fontSize: compact ? 10 : 12,
-                    color: _isRecording ? Colors.red[400] : Colors.blueGrey[500],
-                  ),
-                ),
-                if (_waitingForVoiceConfirmation && !_isRecording && !_isProcessing) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      border: Border.all(color: Colors.green[200]!),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.record_voice_over, size: 14, color: Colors.green),
-                        const SizedBox(width: 8),
-                        Text(
-                          'SPEAK "CONFIRM" OR "CANCEL"',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

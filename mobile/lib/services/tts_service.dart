@@ -1,5 +1,6 @@
 // tts_service.dart
 import 'package:flutter_tts/flutter_tts.dart';
+import 'dart:async';
 
 class TtsService {
   final FlutterTts _flutterTts = FlutterTts();
@@ -42,6 +43,34 @@ class TtsService {
       print('TTS Service Speak failed: $e');
       _isSpeaking = false;
     }
+  }
+
+  // Speak a message and await its completion
+  Future<void> speakAndAwait(String text, {Duration timeout = const Duration(seconds: 10)}) async {
+    final completer = Completer<void>();
+    final oldOnCompletion = onCompletion;
+    
+    onCompletion = () {
+      onCompletion = oldOnCompletion;
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+      if (oldOnCompletion != null) {
+        oldOnCompletion();
+      }
+    };
+
+    await speak(text);
+
+    // Safety timeout
+    Future.delayed(timeout, () {
+      if (!completer.isCompleted) {
+        onCompletion = oldOnCompletion;
+        completer.complete();
+      }
+    });
+
+    return completer.future;
   }
 
   // Read back structured inspection confirmation
