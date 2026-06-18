@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _isRecording = false;
   String? _recordedFilePath;
   bool _isProcessing = false;
-  String _statusMessage = 'System ready. Select mode and hold button to speak.';
+  String _statusMessage = 'System ready. Tap START button to begin.';
   
   // Console log outputs
   String? _rawTranscript;
@@ -145,34 +145,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _startIdleVoiceTriggerListener() async {
-    if (!mounted || _isRecording || _waitingForVoiceConfirmation || _isProcessing || _isStartingRecording) return;
-
-    if (!_speechEnabled) return;
-
-    setState(() {
-      _statusMessage = 'System ready. Say "Start Inspection" or tap Start button.';
-    });
-
-    try {
-      _explicitSpeechStop = false;
-      await _speechToText.listen(
-        onResult: (result) {
-          final words = result.recognizedWords.toLowerCase().trim();
-          if (words.contains('start inspection') || words.contains('start recording')) {
-            _cancelConfirmationRecording();
-            _startRecording();
-          }
-        },
-        listenFor: const Duration(hours: 1),
-        pauseFor: const Duration(seconds: 60),
-        listenOptions: stt.SpeechListenOptions(
-          cancelOnError: false,
-          partialResults: true,
-        ),
-      );
-    } catch (e) {
-      print('Idle trigger listener failed: $e');
-    }
+    // No-op to prevent background idle listening loops and annoying OS beeps when idle.
+    // Speech recognition only starts when explicitly tapping the START button.
+    return;
   }
 
   void _cancelIdleVoiceTriggerListener() {
