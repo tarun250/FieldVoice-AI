@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     
     _isStartingRecording = true;
     _cancelConfirmationRecording();
-    await _ttsService.stop(); // Stop any reading voice
+    await _audioService.stopAudio(); // Stop any active reading voice
     
     setState(() {
       _statusMessage = 'Starting inspection...';
@@ -275,7 +275,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   // 1. Live Processing Loop (Online Path)
-  // 1. Live Processing Loop (Online Path)
   Future<void> _processAudioLive(String filePath) async {
     setState(() {
       _isProcessing = true;
@@ -304,16 +303,37 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _currentAudioStorageUrl = sttResult['file']['storage_path'] as String?;
           _waitingForVoiceConfirmation = true;
           _isProcessing = false;
-          _statusMessage = 'Reviewing. Tap CONFIRM or REJECT below.';
+          _statusMessage = 'Reviewing report... Playing readback.';
         });
+
+        // Play the neural confirmation TTS from the backend
+        final ttsAudioUrl = extractResult['tts_audio_url'] as String?;
+        if (ttsAudioUrl != null) {
+          final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
+          print('Playing confirmation TTS from URL: $fullUrl');
+          await _audioService.playUrl(fullUrl);
+        }
+
+        // Start listening for hands-free confirmation keywords
+        _startVoiceConfirmationListener();
       } else {
         // Step B: RAG Search manual
-        final answer = await _apiService.queryKnowledgeBase(transcriptText);
+        final queryResult = await _apiService.queryKnowledgeBase(transcriptText);
+        final answer = queryResult['resolved_answer'] ?? queryResult['answer'] ?? '';
+        final ttsAudioUrl = queryResult['tts_audio_url'] as String?;
+
         setState(() {
           _ragResponse = answer;
           _isProcessing = false;
-          _statusMessage = 'Query answered. Please review the response.';
+          _statusMessage = 'Query answered. Review response.';
         });
+
+        // Play the neural query answer TTS from the backend
+        if (ttsAudioUrl != null) {
+          final fullUrl = '${AppConstants.backendUrl}$ttsAudioUrl';
+          print('Playing query answer TTS from URL: $fullUrl');
+          await _audioService.playUrl(fullUrl);
+        }
       }
     } catch (e) {
       setState(() {
@@ -328,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   // Hands-free voice confirmation completion handler
   void _onTtsCompleted() {
-    // No-op (TTS disabled)
+    // No-op (TTS playback completion is handled inline via await in _processAudioLive)
   }
 
   void _cancelConfirmationRecording() {
@@ -337,11 +357,161 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _startVoiceConfirmationListener({bool resetTimer = true}) async {
-    // No-op (Voice confirmation disabled)
+    if (!mounted || !_waitingForVoiceConfirmation) return;
+    
+    // Stop any active recording/listening stream first
+    _realtimeCheckTimer?.cancel();
+    _realtimeCheckTimer = null;
+    await _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
+    await _audioService.stopRecording();
+    
+    setState(() {
+      _statusMessage = 'Listening for confirmation...';
+      _isRecording = true;
+    });
+
+    _pulseController.repeat(reverse: true);
+    _audioBytesBuilder.clear();
+
+    try {
+      final stream = await _audioService.startStream();
+      if (stream != null) {
+        _audioStreamSubscription = stream.listen((chunk) {
+          _audioBytesBuilder.add(chunk);
+        });
+
+        // Start 2.5-second timer to check for "confirm" or "cancel" keywords
+        _isCheckingRealtime = false;
+        _realtimeCheckTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) async {
+          if (_isCheckingRealtime || !_isRecording || !_isOnline) return;
+          _isCheckingRealtime = true;
+
+          try {
+            final pcmBytes = _audioBytesBuilder.toBytes();
+            if (pcmBytes.isEmpty) {
+              _isCheckingRealtime = false;
+              return;
+            }
+
+            // Slice the last 5 seconds of audio for transcription check
+            final int chunkLength = 16000 * 2 * 5; // 5 seconds of PCM
+            final Uint8List checkBytes;
+            if (pcmBytes.length <= chunkLength) {
+              checkBytes = pcmBytes;
+            } else {
+              checkBytes = Uint8List.sublistView(pcmBytes, pcmBytes.length - chunkLength);
+            }
+
+            final tempDir = await getTemporaryDirectory();
+            final tempPath = '${tempDir.path}/realtime_confirmation_chunk.wav';
+            await _audioService.savePcmToWav(checkBytes, tempPath);
+
+            final res = await _apiService.transcribeAudio(
+              tempPath,
+              'realtime-confirm-${DateTime.now().millisecondsSinceEpoch}',
+            );
+            final text = (res['text'] as String).toLowerCase();
+            print('Confirmation voice check: $text');
+
+            final bool isConfirm = text.contains('confirm') ||
+                                  text.contains('yes') ||
+                                  text.contains('yeah') ||
+                                  text.contains('ok') ||
+                                  text.contains('submit') ||
+                                  text.contains('approved');
+
+            final bool isCancel = text.contains('cancel') ||
+                                 text.contains('reject') ||
+                                 text.contains('no') ||
+                                 text.contains('try again') ||
+                                 text.contains('reset');
+
+            if (isConfirm || isCancel) {
+              _realtimeCheckTimer?.cancel();
+              _realtimeCheckTimer = null;
+              await _audioStreamSubscription?.cancel();
+              _audioStreamSubscription = null;
+              await _audioService.stopRecording();
+              
+              setState(() {
+                _isRecording = false;
+              });
+
+              _processVoiceConfirmation(isConfirm, isCancel);
+            }
+          } catch (e) {
+            print('Error in voice confirmation check: $e');
+          } finally {
+            _isCheckingRealtime = false;
+          }
+        });
+      }
+    } catch (e) {
+      print('Voice confirmation listener failed: $e');
+    }
+
+    if (resetTimer) {
+      _confirmationTimer?.cancel();
+      // Automatically time out confirmation after 30 seconds of silence/no input
+      _confirmationTimer = Timer(const Duration(seconds: 30), () async {
+        if (_waitingForVoiceConfirmation) {
+          _realtimeCheckTimer?.cancel();
+          _realtimeCheckTimer = null;
+          await _audioStreamSubscription?.cancel();
+          _audioStreamSubscription = null;
+          await _audioService.stopRecording();
+          _pulseController.stop();
+          _pulseController.reset();
+
+          setState(() {
+            _waitingForVoiceConfirmation = false;
+            _isRecording = false;
+            _statusMessage = 'Confirmation timed out. Submit manually.';
+          });
+        }
+      });
+    }
   }
 
   Future<void> _processVoiceConfirmation(bool isConfirm, bool isCancel) async {
-    // No-op (Voice confirmation disabled)
+    if (!mounted || !_waitingForVoiceConfirmation) return;
+
+    _pulseController.stop();
+    _pulseController.reset();
+
+    setState(() {
+      _isRecording = false;
+      _isProcessing = true;
+      _statusMessage = 'Processing confirmation...';
+    });
+
+    try {
+      if (isConfirm) {
+        await _executeSubmitWorkOrder();
+      } else if (isCancel) {
+        setState(() {
+          _waitingForVoiceConfirmation = false;
+          _extractedData = null;
+          _rawTranscript = null;
+          _isProcessing = false;
+          _statusMessage = 'Report rejected. Tap START to record again.';
+        });
+      } else {
+        setState(() {
+          _isProcessing = false;
+          _statusMessage = 'Did not recognize command. Please tap buttons manually.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isProcessing = false;
+        _statusMessage = 'Confirmation error: ${e.toString()}';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Voice Confirmation failed: ${e.toString()}. Please tap buttons manually.')),
+      );
+    }
   }
 
   Future<void> _executeSubmitWorkOrder() async {
@@ -391,8 +561,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _manualSubmitWorkOrder(String audioStorageUrl) async {
+    _realtimeCheckTimer?.cancel();
+    _realtimeCheckTimer = null;
+    await _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
+    await _audioService.stopRecording();
+    await _audioService.stopAudio(); // Stop active playback
     _cancelConfirmationRecording();
-    await _ttsService.stop();
     _currentAudioStorageUrl = audioStorageUrl;
     await _executeSubmitWorkOrder();
   }
@@ -695,6 +870,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     onPressed: () {
+                      _realtimeCheckTimer?.cancel();
+                      _realtimeCheckTimer = null;
+                      _audioStreamSubscription?.cancel();
+                      _audioStreamSubscription = null;
+                      _audioService.stopRecording();
+                      _audioService.stopAudio(); // Stop active playback
                       setState(() {
                         _cancelConfirmationRecording();
                         _waitingForVoiceConfirmation = false;
@@ -702,6 +883,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         _rawTranscript = null;
                         _currentAudioStorageUrl = null;
                         _statusMessage = 'Report rejected. Tap START to record again.';
+                        _isRecording = false;
                       });
                     },
                     child: const Row(
@@ -811,6 +993,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: () {
+                  _audioService.stopAudio(); // Stop active playback
                   setState(() {
                     _ragResponse = null;
                     _rawTranscript = null;

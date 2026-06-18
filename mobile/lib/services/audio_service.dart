@@ -88,6 +88,16 @@ class AudioService {
     }
   }
 
+  // Play audio from remote URL and await completion
+  Future<void> playUrl(String url) async {
+    try {
+      await _player.setUrl(url);
+      await _player.play();
+    } catch (e) {
+      print('AudioService Play Url Error: $e');
+    }
+  }
+
   // Stop playback
   Future<void> stopAudio() async {
     await _player.stop();

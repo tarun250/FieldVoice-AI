@@ -23,11 +23,23 @@ class QueryController {
       // Execute RAG pipeline
       const result = await queryService.resolveQuery(query_text, techId);
 
+      // Synthesize answer text into speech
+      const ttsMessage = `Response from knowledge manual: ${result.answer}`;
+      let ttsAudioUrl = null;
+      try {
+        const ttsService = require('../services/ttsService');
+        ttsAudioUrl = await ttsService.synthesize(ttsMessage);
+      } catch (err) {
+        console.error('Failed to generate TTS audio in query:', err.message);
+      }
+
       return res.status(200).json({
         success: true,
         answer: result.answer,
+        resolved_answer: result.answer, // support both keys for mobile compatibility
         source_chunks: result.source_chunks,
-        search_source: result.source
+        search_source: result.source,
+        tts_audio_url: ttsAudioUrl
       });
     } catch (error) {
       console.error('QueryController Error:', error);

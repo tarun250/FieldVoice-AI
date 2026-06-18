@@ -21,9 +21,25 @@ class ExtractionController {
       // Execute structured parsing
       const result = await extractionService.extract(transcript);
 
+      // Generate TTS voice confirmation text and synthesize it
+      const parts = result.parts_required || [];
+      const partsText = parts.length === 0 ? "no replacement parts" : `required parts: ${parts.join(', ')}`;
+      const ttsMessage = `Verify report details. Equipment ID is ${result.equipment_id || 'Unspecified machine'}. Detected fault code is ${result.fault_code || 'Unspecified fault'}. Severity is ${result.severity || 'MEDIUM'}. And ${partsText}. Please say confirm to submit, or cancel to try again.`;
+
+      let ttsAudioUrl = null;
+      try {
+        const ttsService = require('../services/ttsService');
+        ttsAudioUrl = await ttsService.synthesize(ttsMessage);
+      } catch (err) {
+        console.error('Failed to generate TTS audio in extraction:', err.message);
+      }
+
       return res.status(200).json({
         success: true,
-        data: result
+        data: {
+          ...result,
+          tts_audio_url: ttsAudioUrl
+        }
       });
     } catch (error) {
       console.error('ExtractionController Error:', error);

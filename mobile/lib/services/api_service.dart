@@ -128,7 +128,7 @@ class ApiService {
   }
 
   // 4. Query RAG vector manuals for technical questions
-  Future<String> queryKnowledgeBase(String queryText) async {
+  Future<Map<String, dynamic>> queryKnowledgeBase(String queryText) async {
     try {
       final response = await _dio.post(
         '/api/queries',
@@ -138,7 +138,7 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        return response.data['resolved_answer'] as String;
+        return response.data as Map<String, dynamic>;
       } else {
         throw Exception('RAG status error: ${response.statusCode}');
       }
